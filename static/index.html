@@ -107,8 +107,9 @@ input[type=file]{margin-top:6px;}
       <input type="number" id="a_pandwoz" placeholder="bijv. 2000000" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;"></div>
     <div style="display:flex;align-items:flex-end;"><button class="sec" style="margin:0;width:100%;" onclick="verdeelWoz()">Verdeel WOZ over woningen</button></div>
   </div>
+  <label class="check" style="display:flex;gap:8px;font-size:.83rem;margin-bottom:8px;"><input type="checkbox" id="a_nieuwbouw"> Nieuwbouw/transformatie: eerste bewoning na 1-7-2024 én start bouw vóór 1-1-2028 (+10% opslag bij middenhuur, 20 jaar)</label>
   <div style="overflow-x:auto;">
-  <table><thead><tr><th style="position:static;">Woning</th><th style="position:static;">WOZ (€)</th><th style="position:static;">Label</th><th style="position:static;">Aanrecht (cm)</th><th style="position:static;">Keukenapparatuur</th><th style="position:static;">Toilet</th><th style="position:static;">Bad/douche</th><th style="position:static;">Badkamer-extra's</th></tr></thead>
+  <table><thead><tr><th style="position:static;">Woning</th><th style="position:static;">WOZ (€)</th><th style="position:static;">Label</th><th style="position:static;">Aanrecht (cm)</th><th style="position:static;">Keukenapparatuur</th><th style="position:static;">Toilet</th><th style="position:static;">Toilet 2</th><th style="position:static;">Bad/douche</th><th style="position:static;">Wastafels</th><th style="position:static;">Verkoeling (vertrekken)</th><th style="position:static;">Badkamer-extra's</th></tr></thead>
   <tbody id="a_units"></tbody></table>
   </div>
   <button class="sec" style="padding:5px 12px;font-size:.8rem;" onclick="kopieerEerste()">Pas eerste regel toe op alle woningen</button>
@@ -146,7 +147,10 @@ function toonAanvulVragen(data){
     <td><input type="number" class="a_cm" value="${u.counter_length_cm||180}" ${A_SEL}></td>
     <td><select class="a_app" ${A_SEL}><option value="geen">Geen/minimaal</option><option value="standaard" selected>Standaard (inductie, koelkast, oven, vaatwasser, afzuiging)</option><option value="compleet">Compleet (+ vriezer, magnetron, quooker)</option></select></td>
     <td><select class="a_wc" ${A_SEL}><option value="wall_hung_toilet_room" selected>Hangend, toiletruimte</option><option value="wall_hung_bathroom">Hangend, badkamer</option><option value="standing_toilet_room">Staand, toiletruimte</option><option value="standing_bathroom">Staand, badkamer</option><option value="">Geen</option></select></td>
+    <td><select class="a_wc2" ${A_SEL}><option value="" selected>Geen</option><option value="wall_hung_bathroom">Hangend, badkamer</option><option value="wall_hung_toilet_room">Hangend, toiletruimte</option><option value="standing_bathroom">Staand, badkamer</option></select></td>
     <td><select class="a_bd" ${A_SEL}><option value="shower" selected>Douche</option><option value="bath">Bad</option><option value="bath_and_shower">Bad + douche</option><option value="">Geen</option></select></td>
+    <td><input type="number" class="a_wast" value="1" min="0" max="4" ${A_SEL}></td>
+    <td><select class="a_koel" ${A_SEL}><option value="0" selected>Geen</option><option value="1">1 vertrek (+1)</option><option value="2">2 vertrekken (+2)</option></select></td>
     <td><select class="a_ex" ${A_SEL}><option value="geen">Geen</option><option value="standaard" selected>Standaard (afscheiding, radiator, meubel)</option><option value="luxe">Luxe (+ kast, thermostaat)</option></select></td>`;
     tb.appendChild(tr);
   });
@@ -167,7 +171,7 @@ function verdeelWoz(){
 function kopieerEerste(){
   const rijen=[...document.querySelectorAll('#a_units tr')]; if(rijen.length<2)return;
   const eerste=rijen[0];
-  ['a_lbl','a_cm','a_app','a_wc','a_bd','a_ex'].forEach(c=>{
+  ['a_lbl','a_cm','a_app','a_wc','a_wc2','a_bd','a_wast','a_koel','a_ex'].forEach(c=>{
     const v=eerste.querySelector('.'+c).value;
     rijen.slice(1).forEach(r=>r.querySelector('.'+c).value=v);
   });
@@ -193,10 +197,23 @@ function verwerkAanvul(){
     u.energy_label=g('a_lbl')||gLbl||null;
     u.counter_length_cm=+g('a_cm')||0; u.kitchen_basic_ok=(+g('a_cm')||0)>=100;
     Object.assign(u,APP[g('a_app')]);
-    u.toilet_1=g('a_wc')||null; u.basins_count=1;
+    u.toilet_1=g('a_wc')||null; u.toilet_2=g('a_wc2')||null;
+    u.basins_count=+g('a_wast')||0;
     u.bath_shower=g('a_bd')||null; u.bathroom_quality_ok=true;
     Object.assign(u,EX[g('a_ex')]);
+    // verkoeling: grootste verwarmde vertrekken van deze woning markeren
+    const nKoel=+g('a_koel')||0;
+    data.spaces.filter(s=>s.unit_id===u.unit_id).forEach(s=>{s.heated_and_cooled=false;});
+    if(nKoel>0){
+      data.spaces.filter(s=>s.unit_id===u.unit_id&&s.heated&&["living","bedroom","kitchen","bathroom"].includes(s.space_function))
+        .sort((a,b)=>(b.area_m2_wws||0)-(a.area_m2_wws||0)).slice(0,nKoel)
+        .forEach(s=>{s.heated_and_cooled=true;});
+    }
   });
+  if(document.getElementById('a_nieuwbouw').checked){
+    data.building.new_build_first_occupancy="2024-07-01";
+    data.building.construction_start_date="2027-12-31";
+  } else { delete data.building.new_build_first_occupancy; delete data.building.construction_start_date; }
   document.getElementById('invoer').value=JSON.stringify(data,null,1);
   document.getElementById('aanvulKaart').style.display='none';
   bereken();
