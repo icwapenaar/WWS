@@ -1,0 +1,514 @@
+{
+ "_meta": {
+  "bron": "024-1172 BA-01 (A1) FASE 2 GKB16 28-05-2026.pdf — automatische extractie",
+  "aannames": [
+   "heated=true aangenomen voor alle vertrekken (renovatie 2026) — te bevestigen",
+   "Zaalwoningen 4 en 5: open woonruimte 1e verdieping geschat als deel-GO minus toilet — exacte m2 in model controleren",
+   "Woning 2: op tekening zowel 30,3 m2 (souterrain) als 89,9 m2 (BG) — geinterpreteerd als maisonnette; controleren",
+   "Energielabel, WOZ, keuken- en sanitairspecificaties staan niet op de tekening (M/C-velden) — aanvullen",
+   "Fietsenberging 55,2 m2 uit A3-set; 16 fietsen / 2 per woning = 8 adressen",
+   "WOZ EUR 2.000.000 (gehele pand) naar rato van GO verdeeld over de woningen (EUR 2785/m2); winkel niet afgesplitst — voor de formele telling is per woning een eigen WOZ-beschikking of 85% taxatiewaarde nodig",
+   "Rijksmonument bevestigd: +35%% huurprijsopslag, geen energielabel-minpunten",
+   "Buitenruimtes herkend op tekening: woning 1 (4,00), 3 (4,47 + terras 6,95), 4 (4,00), 5 (4,00), 6 (4,00), 7 (4,50), 2 (terras 6,95); woning 8 heeft geen buitenruimte (-5 punten)",
+   "Twee terrassen van 6,95 m2 op BG: toewijzing aan woning 2 en 3 aangenomen — verifieren",
+   "Toiletten bij woning 4/5/6/7: m2 niet op tekening (eerder onterecht 4,00/4,50 toegekend; dat waren buitenruimtes) — toilet-m2 aanvullen indien >= 2 m2"
+  ]
+ },
+ "building": {
+  "building_id": "GKB16-F2",
+  "project_name": "Grotekerksbuurt 16 Fase 2",
+  "address": "Grotekerksbuurt 16, Dordrecht",
+  "building_type": "multi_family",
+  "heritage_status": "national_monument",
+  "total_addresses": 8,
+  "care_step_free": false,
+  "care_alarm_in_contract": false,
+  "care_communal_rooms_in_contract": false
+ },
+ "units": [
+  {
+   "unit_id": "Woning 1",
+   "gross_floor_area_m2": 93.5,
+   "woz_value_eur": 260409
+  },
+  {
+   "unit_id": "Woning 2",
+   "gross_floor_area_m2": 120.2,
+   "woz_value_eur": 334772
+  },
+  {
+   "unit_id": "Woning 3",
+   "gross_floor_area_m2": 94.3,
+   "woz_value_eur": 262638
+  },
+  {
+   "unit_id": "Woning 4",
+   "gross_floor_area_m2": 78.3,
+   "woz_value_eur": 218075
+  },
+  {
+   "unit_id": "Woning 5",
+   "gross_floor_area_m2": 67.8,
+   "woz_value_eur": 188832
+  },
+  {
+   "unit_id": "Woning 6",
+   "gross_floor_area_m2": 86.9,
+   "woz_value_eur": 242028
+  },
+  {
+   "unit_id": "Woning 7",
+   "gross_floor_area_m2": 84.0,
+   "woz_value_eur": 233951
+  },
+  {
+   "unit_id": "Woning 8",
+   "gross_floor_area_m2": 93.1,
+   "woz_value_eur": 259295
+  }
+ ],
+ "spaces": [
+  {
+   "space_id": "w1-1",
+   "unit_id": "Woning 1",
+   "space_name": "Woonkamer",
+   "space_function": "living",
+   "area_m2_wws": 31.8,
+   "heated": true
+  },
+  {
+   "space_id": "w1-2",
+   "unit_id": "Woning 1",
+   "space_name": "Keuken",
+   "space_function": "kitchen",
+   "area_m2_wws": 10.4,
+   "heated": true
+  },
+  {
+   "space_id": "w1-3",
+   "unit_id": "Woning 1",
+   "space_name": "Slaapkamer 1",
+   "space_function": "bedroom",
+   "area_m2_wws": 14.9,
+   "heated": true
+  },
+  {
+   "space_id": "w1-4",
+   "unit_id": "Woning 1",
+   "space_name": "Slaapkamer 2",
+   "space_function": "bedroom",
+   "area_m2_wws": 10.8,
+   "heated": true
+  },
+  {
+   "space_id": "w1-5",
+   "unit_id": "Woning 1",
+   "space_name": "Badkamer",
+   "space_function": "bathroom",
+   "area_m2_wws": 6.33,
+   "heated": true
+  },
+  {
+   "space_id": "w1-6",
+   "unit_id": "Woning 1",
+   "space_name": "Berging (voormalige provisiekast)",
+   "space_function": "internal_storage",
+   "area_m2_wws": 7.96
+  },
+  {
+   "space_id": "w2-1",
+   "unit_id": "Woning 2",
+   "space_name": "Verblijfsruimte souterrain",
+   "space_function": "living",
+   "area_m2_wws": 17.4,
+   "heated": true
+  },
+  {
+   "space_id": "w2-2",
+   "unit_id": "Woning 2",
+   "space_name": "Toilet souterrain",
+   "space_function": "toilet_room",
+   "area_m2_wws": 1.6
+  },
+  {
+   "space_id": "w2-3",
+   "unit_id": "Woning 2",
+   "space_name": "Techniekruimte",
+   "space_function": "technical",
+   "area_m2_wws": 1.44
+  },
+  {
+   "space_id": "w2-4",
+   "unit_id": "Woning 2",
+   "space_name": "Woonkamer/keuken BG",
+   "space_function": "living",
+   "area_m2_wws": 28.5,
+   "heated": true,
+   "is_open_kitchen": true
+  },
+  {
+   "space_id": "w2-5",
+   "unit_id": "Woning 2",
+   "space_name": "Slaapkamer 2",
+   "space_function": "bedroom",
+   "area_m2_wws": 12.5,
+   "heated": true
+  },
+  {
+   "space_id": "w2-6",
+   "unit_id": "Woning 2",
+   "space_name": "Slaapkamer 3",
+   "space_function": "bedroom",
+   "area_m2_wws": 10.1,
+   "heated": true
+  },
+  {
+   "space_id": "w2-7",
+   "unit_id": "Woning 2",
+   "space_name": "Badkamer",
+   "space_function": "bathroom",
+   "area_m2_wws": 3.33,
+   "heated": true
+  },
+  {
+   "space_id": "w3-1",
+   "unit_id": "Woning 3",
+   "space_name": "Woonkamer",
+   "space_function": "living",
+   "area_m2_wws": 31.8,
+   "heated": true
+  },
+  {
+   "space_id": "w3-2",
+   "unit_id": "Woning 3",
+   "space_name": "Keuken",
+   "space_function": "kitchen",
+   "area_m2_wws": 14.5,
+   "heated": true
+  },
+  {
+   "space_id": "w3-3",
+   "unit_id": "Woning 3",
+   "space_name": "Slaapkamer 1",
+   "space_function": "bedroom",
+   "area_m2_wws": 13.2,
+   "heated": true
+  },
+  {
+   "space_id": "w3-4",
+   "unit_id": "Woning 3",
+   "space_name": "Slaapkamer 2",
+   "space_function": "bedroom",
+   "area_m2_wws": 11.8,
+   "heated": true
+  },
+  {
+   "space_id": "w3-5",
+   "unit_id": "Woning 3",
+   "space_name": "Badkamer",
+   "space_function": "bathroom",
+   "area_m2_wws": 3.49,
+   "heated": true
+  },
+  {
+   "space_id": "w3-8",
+   "unit_id": "Woning 3",
+   "space_name": "Techniekruimte",
+   "space_function": "technical",
+   "area_m2_wws": 2.44
+  },
+  {
+   "space_id": "w4-1",
+   "unit_id": "Woning 4",
+   "space_name": "Zaal/woonkamer-keuken 1e verd. (geschat)",
+   "space_function": "living",
+   "area_m2_wws": 35.3,
+   "heated": true,
+   "is_open_kitchen": true
+  },
+  {
+   "space_id": "w4-3",
+   "unit_id": "Woning 4",
+   "space_name": "Slaapkamer 2e verd.",
+   "space_function": "bedroom",
+   "area_m2_wws": 13.5,
+   "heated": true
+  },
+  {
+   "space_id": "w4-4",
+   "unit_id": "Woning 4",
+   "space_name": "Slaapkamer 2 (2e verd.)",
+   "space_function": "bedroom",
+   "area_m2_wws": 6.3,
+   "heated": true
+  },
+  {
+   "space_id": "w4-5",
+   "unit_id": "Woning 4",
+   "space_name": "Badkamer",
+   "space_function": "bathroom",
+   "area_m2_wws": 5.48,
+   "heated": true
+  },
+  {
+   "space_id": "w4-6",
+   "unit_id": "Woning 4",
+   "space_name": "Techniekruimte",
+   "space_function": "technical",
+   "area_m2_wws": 1.44
+  },
+  {
+   "space_id": "w5-1",
+   "unit_id": "Woning 5",
+   "space_name": "Zaal/woonkamer-keuken 1e verd. (geschat)",
+   "space_function": "living",
+   "area_m2_wws": 37.8,
+   "heated": true,
+   "is_open_kitchen": true
+  },
+  {
+   "space_id": "w5-3",
+   "unit_id": "Woning 5",
+   "space_name": "Techniekruimte",
+   "space_function": "technical",
+   "area_m2_wws": 1.62
+  },
+  {
+   "space_id": "w5-4",
+   "unit_id": "Woning 5",
+   "space_name": "Slaapkamer 2e verd.",
+   "space_function": "bedroom",
+   "area_m2_wws": 11.8,
+   "heated": true
+  },
+  {
+   "space_id": "w5-5",
+   "unit_id": "Woning 5",
+   "space_name": "Slaapkamer 2 (2e verd.)",
+   "space_function": "bedroom",
+   "area_m2_wws": 5.66,
+   "heated": true
+  },
+  {
+   "space_id": "w5-6",
+   "unit_id": "Woning 5",
+   "space_name": "Badkamer",
+   "space_function": "bathroom",
+   "area_m2_wws": 3.64,
+   "heated": true
+  },
+  {
+   "space_id": "w6-1",
+   "unit_id": "Woning 6",
+   "space_name": "Woonkamer",
+   "space_function": "living",
+   "area_m2_wws": 32.9,
+   "heated": true
+  },
+  {
+   "space_id": "w6-2",
+   "unit_id": "Woning 6",
+   "space_name": "Keuken",
+   "space_function": "kitchen",
+   "area_m2_wws": 10.4,
+   "heated": true
+  },
+  {
+   "space_id": "w6-3",
+   "unit_id": "Woning 6",
+   "space_name": "Slaapkamer",
+   "space_function": "bedroom",
+   "area_m2_wws": 15.2,
+   "heated": true
+  },
+  {
+   "space_id": "w6-4",
+   "unit_id": "Woning 6",
+   "space_name": "Slaapkamer 2",
+   "space_function": "bedroom",
+   "area_m2_wws": 11.5,
+   "heated": true
+  },
+  {
+   "space_id": "w6-5",
+   "unit_id": "Woning 6",
+   "space_name": "Badkamer",
+   "space_function": "bathroom",
+   "area_m2_wws": 3.29,
+   "heated": true
+  },
+  {
+   "space_id": "w6-7",
+   "unit_id": "Woning 6",
+   "space_name": "Techniekruimte",
+   "space_function": "technical",
+   "area_m2_wws": 2.44
+  },
+  {
+   "space_id": "w7-1",
+   "unit_id": "Woning 7",
+   "space_name": "Woonkamer",
+   "space_function": "living",
+   "area_m2_wws": 32.9,
+   "heated": true
+  },
+  {
+   "space_id": "w7-2",
+   "unit_id": "Woning 7",
+   "space_name": "Keuken",
+   "space_function": "kitchen",
+   "area_m2_wws": 10.4,
+   "heated": true
+  },
+  {
+   "space_id": "w7-3",
+   "unit_id": "Woning 7",
+   "space_name": "Slaapkamer",
+   "space_function": "bedroom",
+   "area_m2_wws": 15.2,
+   "heated": true
+  },
+  {
+   "space_id": "w7-4",
+   "unit_id": "Woning 7",
+   "space_name": "Slaapkamer 2",
+   "space_function": "bedroom",
+   "area_m2_wws": 11.5,
+   "heated": true
+  },
+  {
+   "space_id": "w7-5",
+   "unit_id": "Woning 7",
+   "space_name": "Badkamer",
+   "space_function": "bathroom",
+   "area_m2_wws": 3.29,
+   "heated": true
+  },
+  {
+   "space_id": "w7-7",
+   "unit_id": "Woning 7",
+   "space_name": "Techniekruimte",
+   "space_function": "technical",
+   "area_m2_wws": 2.44
+  },
+  {
+   "space_id": "w8-1",
+   "unit_id": "Woning 8",
+   "space_name": "Woonkamer/keuken",
+   "space_function": "living",
+   "area_m2_wws": 50.3,
+   "heated": true,
+   "is_open_kitchen": true
+  },
+  {
+   "space_id": "w8-2",
+   "unit_id": "Woning 8",
+   "space_name": "Slaapkamer",
+   "space_function": "bedroom",
+   "area_m2_wws": 23.8,
+   "heated": true
+  },
+  {
+   "space_id": "w8-3",
+   "unit_id": "Woning 8",
+   "space_name": "Slaapkamer 2",
+   "space_function": "bedroom",
+   "area_m2_wws": 8.33,
+   "heated": true
+  },
+  {
+   "space_id": "w8-4",
+   "unit_id": "Woning 8",
+   "space_name": "Badkamer",
+   "space_function": "bathroom",
+   "area_m2_wws": 2.95,
+   "heated": true
+  },
+  {
+   "space_id": "w8-5",
+   "unit_id": "Woning 8",
+   "space_name": "Toilet",
+   "space_function": "toilet_room",
+   "area_m2_wws": 1.19
+  },
+  {
+   "space_id": "w8-6",
+   "unit_id": "Woning 8",
+   "space_name": "Techniekruimte",
+   "space_function": "technical",
+   "area_m2_wws": 1.44
+  },
+  {
+   "space_id": "gem-1",
+   "unit_id": null,
+   "space_name": "Collectieve fietsenberging",
+   "space_function": "communal_indoor",
+   "area_m2_wws": 55.2,
+   "access_addresses_count": 8
+  },
+  {
+   "space_id": "w1-7",
+   "unit_id": "Woning 1",
+   "space_name": "Buitenruimte",
+   "space_function": "outdoor_private",
+   "area_m2_wws": 4.0,
+   "fall_protection_and_door_access": true
+  },
+  {
+   "space_id": "w2-8",
+   "unit_id": "Woning 2",
+   "space_name": "Terras BG (toewijzing te verifiëren)",
+   "space_function": "outdoor_private",
+   "area_m2_wws": 6.95,
+   "fall_protection_and_door_access": true
+  },
+  {
+   "space_id": "w3-9",
+   "unit_id": "Woning 3",
+   "space_name": "Buitenruimte voorzijde",
+   "space_function": "outdoor_private",
+   "area_m2_wws": 4.47,
+   "fall_protection_and_door_access": true
+  },
+  {
+   "space_id": "w3-10",
+   "unit_id": "Woning 3",
+   "space_name": "Terras BG (toewijzing te verifiëren)",
+   "space_function": "outdoor_private",
+   "area_m2_wws": 6.95,
+   "fall_protection_and_door_access": true
+  },
+  {
+   "space_id": "w4-7",
+   "unit_id": "Woning 4",
+   "space_name": "Buitenruimte 1e verd.",
+   "space_function": "outdoor_private",
+   "area_m2_wws": 4.0,
+   "fall_protection_and_door_access": true
+  },
+  {
+   "space_id": "w5-7",
+   "unit_id": "Woning 5",
+   "space_name": "Buitenruimte 1e verd.",
+   "space_function": "outdoor_private",
+   "area_m2_wws": 4.0,
+   "fall_protection_and_door_access": true
+  },
+  {
+   "space_id": "w6-8",
+   "unit_id": "Woning 6",
+   "space_name": "Buitenruimte",
+   "space_function": "outdoor_private",
+   "area_m2_wws": 4.0,
+   "fall_protection_and_door_access": true
+  },
+  {
+   "space_id": "w7-8",
+   "unit_id": "Woning 7",
+   "space_name": "Buitenruimte",
+   "space_function": "outdoor_private",
+   "area_m2_wws": 4.5,
+   "fall_protection_and_door_access": true
+  }
+ ]
+}
