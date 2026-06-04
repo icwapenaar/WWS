@@ -125,5 +125,12 @@ def extract(pdf_pad, building_overrides=None):
                 "total_addresses": len(units) or 1,
                 "care_step_free": False, "care_alarm_in_contract": False, "care_communal_rooms_in_contract": False}
     if building_overrides: building.update(building_overrides)
+    # ruwe tekstregels per pagina meeleveren t.b.v. AI-heranalyse
+    ruw = []
+    for pno in range(len(doc)):
+        for l in _lijnen(doc[pno]):
+            if len(l["tekst"]) < 60:
+                ruw.append({"p": pno + 1, "x": round(l["x"]), "y": round(l["y"]), "t": l["tekst"]})
     return {"_meta": {"bron": pdf_pad.split("/")[-1], "open_vragen": vragen, "aannames": aannames},
+            "_ruw": ruw,
             "building": building, "units": list(units.values()), "spaces": spaces}
