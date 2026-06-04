@@ -35,22 +35,32 @@ input[type=file]{margin-top:6px;}
 </head>
 <body>
 <div class="wrap">
-<h1>WWS Calculator</h1>
-<div class="sub">Rekenkern v1 — zelfstandige woonruimte, prijspeil 1 januari 2026. Leest de JSON-export volgens de <em>WWS Data Export Specification v1.0</em> en berekent per appartement de exacte punten, sector en maximale kale huur. Indicatief; alleen de Huurcommissie doet bindende uitspraken.</div>
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+  <h1>WWS Calculator</h1>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <select id="projectLijst" onchange="projectLaden(this.value)" style="padding:8px;border:1px solid #c4ccd6;border-radius:8px;font-size:.85rem;max-width:220px;">
+      <option value="">— Opgeslagen projecten —</option>
+    </select>
+    <button class="sec" style="padding:8px 12px;font-size:.82rem;margin:0;" onclick="projectOpslaan()" data-i18n="btnSave">Project opslaan</button>
+    <button class="sec" style="padding:8px 12px;font-size:.82rem;margin:0;" onclick="nieuwProject()" data-i18n="btnNew">Nieuw project</button>
+    <button style="padding:8px 12px;font-size:.82rem;margin:0;" onclick="wisselTaal()" id="taalKnop">EN</button>
+  </div>
+</div>
+<div class="sub" data-i18n="sub">Rekenkern v1 — zelfstandige woonruimte, prijspeil 1 januari 2026. Leest de JSON-export volgens de <em>WWS Data Export Specification v1.0</em> en berekent per appartement de exacte punten, sector en maximale kale huur. Indicatief; alleen de Huurcommissie doet bindende uitspraken.</div>
 
 <div class="kaart">
-  <h2>1. Gegevens laden</h2>
+  <h2 data-i18n="hLoad">1. Gegevens laden</h2>
   <div style="margin-bottom:10px;">
-    <button class="sec" id="tabJson" onclick="invoerTab('json')" style="border-width:2px;">JSON-import (model/tekening)</button>
-    <button class="sec" id="tabHand" onclick="invoerTab('hand')">Handmatige invoer</button>
+    <button class="sec" id="tabJson" onclick="invoerTab('json')" style="border-width:2px;" data-i18n="tabJson">JSON-import (model/tekening)</button>
+    <button class="sec" id="tabHand" onclick="invoerTab('hand')" data-i18n="tabHand">Handmatige invoer</button>
   </div>
 
   <div id="paneelJson">
     <div class="foot" style="margin-bottom:8px;">Tekening (PDF) laten uitlezen? Dat is een AI-stap die niet in dit losse bestand draait: stuur de plattegrond naar Claude en je krijgt het JSON-bestand terug dat je hier inleest. In de productie-app wordt dit een geïntegreerde uploadfunctie.</div>
     <input type="file" id="bestand" accept=".json,.pdf">
-    <button class="sec" onclick="laadVoorbeeld()">Voorbeeldgebouw laden</button>
-    <button onclick="bereken()">Bereken puntentelling</button>
-    <label style="display:block;font-size:.85rem;font-weight:600;margin-top:12px;">Of plak/bewerk de JSON hieronder:</label>
+    <button class="sec" onclick="laadVoorbeeld()" data-i18n="btnSample">Voorbeeldgebouw laden</button>
+    <button onclick="bereken()" data-i18n="btnCalc">Bereken puntentelling</button>
+    <label style="display:block;font-size:.85rem;font-weight:600;margin-top:12px;" data-i18n="lblJson">Of plak/bewerk de JSON hieronder:</label>
     <textarea id="invoer" spellcheck="false" placeholder='{"building":{...},"units":[...],"spaces":[...]}'></textarea>
   </div>
 
@@ -83,8 +93,31 @@ input[type=file]{margin-top:6px;}
 
 <div id="meldingen"></div>
 
+<div class="kaart" id="aanvulKaart" style="display:none;">
+  <h2 data-i18n="hVragen">2. Aanvullende vragen — deze gegevens staan niet op een tekening</h2>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">
+    <div><label style="font-size:.8rem;font-weight:600;">Monumentstatus</label>
+      <select id="a_mon" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;">
+        <option value="none">Geen</option><option value="national_monument">Rijksmonument (+35%)</option>
+        <option value="municipal_monument">Gemeentelijk/prov. (+15%)</option><option value="protected_townscape">Stadsgezicht (+5%)</option></select></div>
+    <div><label style="font-size:.8rem;font-weight:600;">Energielabel (alle woningen)</label>
+      <select id="a_label" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;">
+        <option value="">Onbekend / per woning</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option selected>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></div>
+    <div><label style="font-size:.8rem;font-weight:600;">WOZ hele pand (€) <span style="font-weight:400;color:var(--grijs);">verdeling naar rato GO</span></label>
+      <input type="number" id="a_pandwoz" placeholder="bijv. 2000000" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;"></div>
+    <div style="display:flex;align-items:flex-end;"><button class="sec" style="margin:0;width:100%;" onclick="verdeelWoz()">Verdeel WOZ over woningen</button></div>
+  </div>
+  <div style="overflow-x:auto;">
+  <table><thead><tr><th style="position:static;">Woning</th><th style="position:static;">WOZ (€)</th><th style="position:static;">Label</th><th style="position:static;">Aanrecht (cm)</th><th style="position:static;">Keukenapparatuur</th><th style="position:static;">Toilet</th><th style="position:static;">Bad/douche</th><th style="position:static;">Badkamer-extra's</th></tr></thead>
+  <tbody id="a_units"></tbody></table>
+  </div>
+  <button class="sec" style="padding:5px 12px;font-size:.8rem;" onclick="kopieerEerste()">Pas eerste regel toe op alle woningen</button>
+  <button onclick="verwerkAanvul()">Verwerk antwoorden en bereken</button>
+  <div class="foot">Tip: vul de eerste woning in en klik op "Pas eerste regel toe op alle woningen" — bij renovaties zijn keuken en sanitair meestal gelijk. WOZ: zonder eigen beschikking per woning is de verdeling van de pand-WOZ indicatief (formeel geldt 85% taxatiewaarde of het minimum).</div>
+</div>
+
 <div class="kaart" id="resultaatKaart" style="display:none;">
-  <h2>2. Prijslijst per appartement <button class="sec" style="float:right;padding:6px 12px;font-size:.8rem;" onclick="exportCsv()">Exporteer CSV</button></h2>
+  <h2><span data-i18n="hResult">3. Prijslijst per appartement</span> <button class="sec" style="float:right;padding:6px 12px;font-size:.8rem;" onclick="exportCsv()" data-i18n="btnCsv">Exporteer CSV</button></h2>
   <div class="kpi" id="kpi"></div>
   <div style="max-height:480px;overflow:auto;">
   <table id="resTabel"><thead><tr>
@@ -92,13 +125,151 @@ input[type=file]{margin-top:6px;}
   <tbody id="resBody"></tbody></table>
   </div>
   <div class="detail" id="detail"></div>
-  <button class="sec" onclick="toonAdvies()" style="margin-top:10px;">Optimalisatie-advies: route naar de vrije sector (≥ 187 punten)</button>
+  <button class="sec" onclick="toonAdvies()" style="margin-top:10px;" data-i18n="btnAdvies">Optimalisatie-advies: route naar de vrije sector (≥ 187 punten)</button>
   <div class="detail" id="advies"></div>
   <div class="foot">Klik op een regel voor de onderbouwing per appartement. Rekenregels: beleidsboek Waarderingsstelsel zelfstandige woonruimte (jan. 2026): afronding per rubriek op 0,25 punt (≥ 1/8 omhoog), eindtotaal op hele punten; WOZ-kengetallen 2026: € 16.954 (onderdeel I) en € 268 (onderdeel II), minimum-WOZ € 85.806; WOZ-cap 33% met 186-puntenvangnet; zorgwoning +35% over rubriek 1-11; prijsopslagen cumulatief op de maximale huurprijs (alleen gereguleerde segmenten).</div>
 </div>
 </div>
 
 <script>
+/* ============ AANVULSCHERM NA EXTRACTIE ============ */
+let extractData=null;
+const A_SEL='style="width:100%;padding:6px;border:1px solid #c4ccd6;border-radius:6px;font-size:.82rem;"';
+function toonAanvulVragen(data){
+  extractData=data;
+  const tb=document.getElementById('a_units'); tb.innerHTML='';
+  data.units.forEach((u,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><b>${u.unit_id}</b><br><span style="font-size:.72rem;color:var(--grijs);">${u.gross_floor_area_m2?u.gross_floor_area_m2+' m² GO':''}</span></td>
+    <td><input type="number" class="a_woz" value="${u.woz_value_eur||''}" ${A_SEL}></td>
+    <td><select class="a_lbl" ${A_SEL}><option value="">Gebouw</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></td>
+    <td><input type="number" class="a_cm" value="${u.counter_length_cm||180}" ${A_SEL}></td>
+    <td><select class="a_app" ${A_SEL}><option value="geen">Geen/minimaal</option><option value="standaard" selected>Standaard (inductie, koelkast, oven, vaatwasser, afzuiging)</option><option value="compleet">Compleet (+ vriezer, magnetron, quooker)</option></select></td>
+    <td><select class="a_wc" ${A_SEL}><option value="wall_hung_toilet_room" selected>Hangend, toiletruimte</option><option value="wall_hung_bathroom">Hangend, badkamer</option><option value="standing_toilet_room">Staand, toiletruimte</option><option value="standing_bathroom">Staand, badkamer</option><option value="">Geen</option></select></td>
+    <td><select class="a_bd" ${A_SEL}><option value="shower" selected>Douche</option><option value="bath">Bad</option><option value="bath_and_shower">Bad + douche</option><option value="">Geen</option></select></td>
+    <td><select class="a_ex" ${A_SEL}><option value="geen">Geen</option><option value="standaard" selected>Standaard (afscheiding, radiator, meubel)</option><option value="luxe">Luxe (+ kast, thermostaat)</option></select></td>`;
+    tb.appendChild(tr);
+  });
+  if((data.building.heritage_status||'none')!=='none') document.getElementById('a_mon').value=data.building.heritage_status;
+  document.getElementById('aanvulKaart').style.display='block';
+  document.getElementById('aanvulKaart').scrollIntoView({behavior:'smooth'});
+}
+function verdeelWoz(){
+  const pand=+document.getElementById('a_pandwoz').value; if(!pand||!extractData)return;
+  const us=extractData.units;
+  const totGO=us.reduce((a,u)=>a+(u.gross_floor_area_m2||0),0);
+  const rijen=document.querySelectorAll('#a_units tr');
+  us.forEach((u,i)=>{
+    const deel = totGO>0 ? pand*(u.gross_floor_area_m2||0)/totGO : pand/us.length;
+    rijen[i].querySelector('.a_woz').value=Math.round(deel);
+  });
+}
+function kopieerEerste(){
+  const rijen=[...document.querySelectorAll('#a_units tr')]; if(rijen.length<2)return;
+  const eerste=rijen[0];
+  ['a_lbl','a_cm','a_app','a_wc','a_bd','a_ex'].forEach(c=>{
+    const v=eerste.querySelector('.'+c).value;
+    rijen.slice(1).forEach(r=>r.querySelector('.'+c).value=v);
+  });
+}
+function verwerkAanvul(){
+  if(!extractData)return;
+  const data=extractData;
+  data.building.heritage_status=document.getElementById('a_mon').value;
+  const gLbl=document.getElementById('a_label').value;
+  const APP={geen:{},standaard:{hob:"induction",fridge_built_in:true,oven:"electric",dishwasher_built_in:true,extractor_hood:true,kitchen_tap:"single_lever"},
+    compleet:{hob:"induction",fridge_built_in:true,freezer_built_in:true,oven:"electric",microwave_built_in:true,dishwasher_built_in:true,extractor_hood:true,extra_kitchen_cabinet_cm:120,kitchen_tap:"thermostatic",boiling_water_tap:true}};
+  const EX={geen:{},standaard:{shower_enclosure_fixed:true,towel_radiator:true,vanity_unit:true,basin_sockets_count:2},
+    luxe:{shower_enclosure_fixed:true,towel_radiator:true,vanity_unit:true,bathroom_extra_cabinet:true,basin_sockets_count:2,bathroom_tap:"thermostatic"}};
+  const rijen=document.querySelectorAll('#a_units tr');
+  data.units.forEach((u,i)=>{
+    const g=c=>rijen[i].querySelector('.'+c).value;
+    u.woz_value_eur=+g('a_woz')||null;
+    u.energy_label=g('a_lbl')||gLbl||null;
+    u.counter_length_cm=+g('a_cm')||0; u.kitchen_basic_ok=(+g('a_cm')||0)>=100;
+    Object.assign(u,APP[g('a_app')]);
+    u.toilet_1=g('a_wc')||null; u.basins_count=1;
+    u.bath_shower=g('a_bd')||null; u.bathroom_quality_ok=true;
+    Object.assign(u,EX[g('a_ex')]);
+  });
+  document.getElementById('invoer').value=JSON.stringify(data,null,1);
+  document.getElementById('aanvulKaart').style.display='none';
+  bereken();
+  document.getElementById('resultaatKaart').scrollIntoView({behavior:'smooth'});
+}
+/* ============ TAAL (NL/EN) ============ */
+let TAAL = localStorage.getItem('wws_taal') || 'nl';
+const I18N = {
+ nl:{sub:"Rekenkern v1 — zelfstandige woonruimte én kamers (WWSO), prijspeil 1 januari 2026. Upload een plattegrond (PDF) of JSON, of voer handmatig in. Indicatief; alleen de Huurcommissie doet bindende uitspraken.",
+  hLoad:"1. Gegevens laden",hVragen:"2. Aanvullende vragen — deze gegevens staan niet op een tekening",tabJson:"JSON-import (model/tekening)",tabHand:"Handmatige invoer",
+  btnSample:"Voorbeeldgebouw laden",btnCalc:"Bereken puntentelling",lblJson:"Of plak/bewerk de JSON hieronder:",
+  hResult:"2. Prijslijst per appartement",btnCsv:"Exporteer CSV",
+  btnAdvies:"Optimalisatie-advies: route naar de vrije sector (≥ 187 punten)",
+  btnSave:"Project opslaan",btnNew:"Nieuw project",
+  kop:["Unit","Vertrekken","Overig","Verw./verk.","Energie","Keuken","Sanitair","Buiten","Gem. ruimten","Parkeren","WOZ","Zorg","Totaal","Sector","Max. huur"],
+  sectoren:["","Sociaal","Middenhuur","Vrije sector"],kamerSector:"Gereguleerd (kamer)",vrij:"vrij",
+  kpiApp:"appartementen",kpiSec:"sociaal / midden / vrij",kpiSom:"max. huursom gereguleerd p/mnd",
+  detailKop:"Volledige verantwoording",detailNoot:"— controleer elke regel; aanpassen kan via handmatige invoer of de JSON",
+  extractOk:"Extractie gelukt:",woningen:"woningen,",ruimtes:"ruimtes herkend.",openVragen:"Open vragen",controleer:"— controleren vóór gebruik:",
+  bezig:"Plattegrond wordt uitgelezen…",mislukt:"Extractie mislukt:",
+  projNaam:"Naam voor dit project:",projLeeg:"— Opgeslagen projecten —",projGeen:"Geen invoer om op te slaan — laad of maak eerst een berekening.",
+  auditNoot:""},
+ en:{sub:"Calculation engine v1 — self-contained dwellings and rooms (Dutch WWS housing valuation system), price level 1 January 2026. Upload a floor plan (PDF) or JSON, or enter data manually. Indicative; only the Rent Tribunal (Huurcommissie) issues binding rulings.",
+  hLoad:"1. Load data",hVragen:"2. Additional questions — this data is not on a drawing",tabJson:"JSON import (model/drawing)",tabHand:"Manual entry (Dutch)",
+  btnSample:"Load sample building",btnCalc:"Calculate points",lblJson:"Or paste/edit the JSON below:",
+  hResult:"3. Rent schedule per apartment",btnCsv:"Export CSV",
+  btnAdvies:"Optimisation advice: route to the deregulated sector (≥ 187 points)",
+  btnSave:"Save project",btnNew:"New project",
+  kop:["Unit","Rooms","Other","Heat/cool","Energy","Kitchen","Sanitary","Outdoor","Communal","Parking","WOZ","Care","Total","Segment","Max. rent"],
+  sectoren:["","Social","Mid-rent","Deregulated"],kamerSector:"Regulated (room)",vrij:"free",
+  kpiApp:"apartments",kpiSec:"social / mid / deregulated",kpiSom:"max regulated rent p/m",
+  detailKop:"Full justification",detailNoot:"— check every line; adjust via manual entry or the JSON",
+  extractOk:"Extraction successful:",woningen:"units,",ruimtes:"rooms recognised.",openVragen:"Open questions",controleer:"— review before use:",
+  bezig:"Reading floor plan…",mislukt:"Extraction failed:",
+  projNaam:"Name for this project:",projLeeg:"— Saved projects —",projGeen:"Nothing to save — load or create a calculation first.",
+  auditNoot:"Note: calculation details are shown in Dutch — the source language of the statutory rules."}
+};
+const TT=k=>I18N[TAAL][k];
+function pasTaalToe(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(I18N[TAAL][k])el.textContent=I18N[TAAL][k];});
+  document.getElementById('taalKnop').textContent = TAAL==='nl'?'EN':'NL';
+  const ths=document.querySelectorAll('#resTabel thead th');
+  if(ths.length===15) TT('kop').forEach((t,i)=>{ths[i].innerHTML = i===12?'<b>'+t+'</b>':t;});
+  document.querySelector('#projectLijst option[value=""]').textContent=TT('projLeeg');
+}
+function wisselTaal(){TAAL=TAAL==='nl'?'en':'nl';localStorage.setItem('wws_taal',TAAL);pasTaalToe();if(resultaten.length)bereken();}
+
+/* ============ PROJECTBEHEER (browseropslag) ============ */
+function projecten(){try{return JSON.parse(localStorage.getItem('wws_projecten')||'{}');}catch(e){return {};}}
+function vulProjectLijst(){
+  const sel=document.getElementById('projectLijst');const ps=projecten();
+  sel.innerHTML='<option value="">'+TT('projLeeg')+'</option>'+Object.keys(ps).sort().map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+' ('+ps[n].datum+')</option>').join('');
+}
+function projectOpslaan(){
+  const inhoud=document.getElementById('invoer').value.trim();
+  if(!inhoud){alert(TT('projGeen'));return;}
+  let naam=prompt(TT('projNaam'));if(!naam)return;
+  const ps=projecten();ps[naam]={json:inhoud,datum:new Date().toLocaleDateString('nl-NL')};
+  localStorage.setItem('wws_projecten',JSON.stringify(ps));vulProjectLijst();
+  document.getElementById('projectLijst').value=naam;
+}
+function projectLaden(naam){
+  if(!naam)return;const ps=projecten();if(!ps[naam])return;
+  document.getElementById('invoer').value=ps[naam].json;
+  invoerTab('json');bereken();
+}
+function nieuwProject(){
+  document.getElementById('invoer').value='';
+  document.getElementById('meldingen').innerHTML='';
+  document.getElementById('resultaatKaart').style.display='none';
+  document.getElementById('detail').style.display='none';
+  document.getElementById('advies').style.display='none';
+  document.getElementById('projectLijst').value='';
+  const b=document.getElementById('bestand'); if(b) b.value='';
+  document.getElementById('aanvulKaart').style.display='none'; extractData=null;
+  resultaten=[];laatsteData=null;
+  invoerTab('json');
+}
 /* ============ CONFIG (jaarlijks bijwerken) ============ */
 const CFG = {
   tijdvak: "2026",
@@ -729,22 +900,22 @@ function bereken(){
   resultaten.forEach((r,i)=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td><b>${r.unit}</b></td><td>${f(r.r1)}</td><td>${f(r.r2)}</td><td>${f(r.r3)}</td><td>${f(r.r4)}</td><td>${f(r.r5)}</td><td>${f(r.r6)}</td><td>${f(r.r8)}</td><td>${f(r.r9)}</td><td>${f(r.r10)}</td><td>${f(r.rWoz)}${r.capNote}</td><td>${r.zorgPts?f(r.zorgPts):'—'}</td><td><b>${r.tot}</b></td>
-    <td><span class="sector s${r.sector}">${r.kamer?'Gereguleerd (kamer)':['','Sociaal','Middenhuur','Vrije sector'][r.sector]}</span></td>
-    <td><b>${r.vrij?'vrij':eur(r.huur)}</b></td>`;
+    <td><span class="sector s${r.sector}">${r.kamer?TT('kamerSector'):TT('sectoren')[r.sector]}</span></td>
+    <td><b>${r.vrij?TT('vrij'):eur(r.huur)}</b></td>`;
     tr.onclick=()=>toonDetail(i);
     body.appendChild(tr);
   });
   const n=resultaten.length, som=resultaten.reduce((a,r)=>a+(r.huur||0),0);
   document.getElementById('kpi').innerHTML=
-    `<div><b>${n}</b><span>appartementen</span></div>
-     <div><b>${resultaten.filter(r=>r.sector===1).length} / ${resultaten.filter(r=>r.sector===2).length} / ${resultaten.filter(r=>r.sector===3).length}</b><span>sociaal / midden / vrij</span></div>
-     <div><b>${eur(som)}</b><span>max. huursom gereguleerd p/mnd</span></div>`;
+    `<div><b>${n}</b><span>${TT('kpiApp')}</span></div>
+     <div><b>${resultaten.filter(r=>r.sector===1).length} / ${resultaten.filter(r=>r.sector===2).length} / ${resultaten.filter(r=>r.sector===3).length}</b><span>${TT('kpiSec')}</span></div>
+     <div><b>${eur(som)}</b><span>${TT('kpiSom')}</span></div>`;
   document.getElementById('resultaatKaart').style.display='block';
   document.getElementById('detail').style.display='none';
 }
 function toonDetail(i){
   const r=resultaten[i], d=document.getElementById('detail');
-  let html='<b>Volledige verantwoording '+r.unit+'</b> <span style="color:var(--grijs);font-size:.78rem;">— controleer elke regel; aanpassen kan via handmatige invoer of de JSON</span>';
+  let html='<b>'+TT('detailKop')+' '+r.unit+'</b> <span style="color:var(--grijs);font-size:.78rem;">'+TT('detailNoot')+'</span>'+(TAAL==='en'?'<div style="font-size:.75rem;color:var(--grijs);margin-top:2px;">'+TT('auditNoot')+'</div>':'');
   html+='<table style="margin-top:6px;"><tr><th style="position:static;">Rubriek</th><th style="position:static;">Onderdeel</th><th style="position:static;text-align:right;">Punten</th><th style="position:static;">Toelichting / reden</th></tr>';
   let vorige="";
   r.aud.forEach(a=>{
@@ -766,19 +937,19 @@ document.getElementById('bestand').addEventListener('change',async e=>{
   const f=e.target.files[0]; if(!f) return;
   const meld=document.getElementById('meldingen');
   if(f.name.toLowerCase().endsWith('.pdf')){
-    meld.innerHTML='<div class="warn">Plattegrond wordt uitgelezen…</div>';
+    meld.innerHTML='<div class="warn">'+TT('bezig')+'</div>';
     const fd=new FormData(); fd.append('file',f);
     try{
       const resp=await fetch('/api/extract',{method:'POST',body:fd});
       const data=await resp.json();
-      if(!resp.ok){meld.innerHTML='<div class="warn"><b>Extractie mislukt:</b> '+(data.error||resp.status)+'</div>';return;}
+      if(!resp.ok){meld.innerHTML='<div class="warn"><b>'+TT('mislukt')+'</b> '+(data.error||resp.status)+'</div>';return;}
       document.getElementById('invoer').value=JSON.stringify(data,null,1);
-      let html='<div class="warn"><b>Extractie gelukt:</b> '+data.units.length+' woningen, '+data.spaces.length+' ruimtes herkend.';
+      let html='<div class="warn"><b>'+TT('extractOk')+'</b> '+data.units.length+' '+TT('woningen')+' '+data.spaces.length+' '+TT('ruimtes');
       const v=(data._meta&&data._meta.open_vragen)||[];
-      if(v.length) html+='<br><b>Open vragen ('+v.length+') — controleren vóór gebruik:</b><br>'+v.slice(0,15).join('<br>')+(v.length>15?'<br>…':'');
+      if(v.length) html+='<br><b>'+TT('openVragen')+' ('+v.length+') '+TT('controleer')+'</b><br>'+v.slice(0,15).join('<br>')+(v.length>15?'<br>…':'');
       html+='</div>';
       meld.innerHTML=html;
-      bereken();
+      toonAanvulVragen(data);
     }catch(err){meld.innerHTML='<div class="warn"><b>Serverfout:</b> '+err.message+' — draait de backend? (uvicorn main:app)</div>';}
     e.target.value=''; return;
   }
@@ -829,6 +1000,8 @@ function laadVoorbeeld(){
     ]
   },null,1);
 }
+
+vulProjectLijst();pasTaalToe();
 </script>
 </body>
 </html>
