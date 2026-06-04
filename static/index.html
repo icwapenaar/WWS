@@ -117,7 +117,7 @@ input[type=file]{margin-top:6px;}
 </div>
 
 <div class="kaart" id="resultaatKaart" style="display:none;">
-  <h2><span data-i18n="hResult">3. Prijslijst per appartement</span> <button class="sec" style="float:right;padding:6px 12px;font-size:.8rem;" onclick="exportCsv()" data-i18n="btnCsv">Exporteer CSV</button></h2>
+  <h2><span data-i18n="hResult">3. Prijslijst per appartement</span> <button class="sec" style="float:right;padding:6px 12px;font-size:.8rem;" onclick="exportCsv()" data-i18n="btnCsv">Exporteer CSV</button><button class="sec" id="btnWijzig" style="float:right;padding:6px 12px;font-size:.8rem;display:none;" onclick="wijzigAntwoorden()" data-i18n="btnEdit">← Wijzig antwoorden</button></h2>
   <div class="kpi" id="kpi"></div>
   <div style="max-height:480px;overflow:auto;">
   <table id="resTabel"><thead><tr>
@@ -172,6 +172,11 @@ function kopieerEerste(){
     rijen.slice(1).forEach(r=>r.querySelector('.'+c).value=v);
   });
 }
+function wijzigAntwoorden(){
+  if(!extractData)return;
+  document.getElementById('aanvulKaart').style.display='block';
+  document.getElementById('aanvulKaart').scrollIntoView({behavior:'smooth'});
+}
 function verwerkAanvul(){
   if(!extractData)return;
   const data=extractData;
@@ -195,6 +200,7 @@ function verwerkAanvul(){
   document.getElementById('invoer').value=JSON.stringify(data,null,1);
   document.getElementById('aanvulKaart').style.display='none';
   bereken();
+  document.getElementById('btnWijzig').style.display='inline-block';
   document.getElementById('resultaatKaart').scrollIntoView({behavior:'smooth'});
 }
 /* ============ TAAL (NL/EN) ============ */
@@ -205,7 +211,7 @@ const I18N = {
   btnSample:"Voorbeeldgebouw laden",btnCalc:"Bereken puntentelling",lblJson:"Of plak/bewerk de JSON hieronder:",
   hResult:"2. Prijslijst per appartement",btnCsv:"Exporteer CSV",
   btnAdvies:"Optimalisatie-advies: route naar de vrije sector (≥ 187 punten)",
-  btnSave:"Project opslaan",btnNew:"Nieuw project",
+  btnSave:"Project opslaan",btnNew:"Nieuw project",btnEdit:"← Wijzig antwoorden",
   kop:["Unit","Vertrekken","Overig","Verw./verk.","Energie","Keuken","Sanitair","Buiten","Gem. ruimten","Parkeren","WOZ","Zorg","Totaal","Sector","Max. huur"],
   sectoren:["","Sociaal","Middenhuur","Vrije sector"],kamerSector:"Gereguleerd (kamer)",vrij:"vrij",
   kpiApp:"appartementen",kpiSec:"sociaal / midden / vrij",kpiSom:"max. huursom gereguleerd p/mnd",
@@ -219,7 +225,7 @@ const I18N = {
   btnSample:"Load sample building",btnCalc:"Calculate points",lblJson:"Or paste/edit the JSON below:",
   hResult:"3. Rent schedule per apartment",btnCsv:"Export CSV",
   btnAdvies:"Optimisation advice: route to the deregulated sector (≥ 187 points)",
-  btnSave:"Save project",btnNew:"New project",
+  btnSave:"Save project",btnNew:"New project",btnEdit:"← Edit answers",
   kop:["Unit","Rooms","Other","Heat/cool","Energy","Kitchen","Sanitary","Outdoor","Communal","Parking","WOZ","Care","Total","Segment","Max. rent"],
   sectoren:["","Social","Mid-rent","Deregulated"],kamerSector:"Regulated (room)",vrij:"free",
   kpiApp:"apartments",kpiSec:"social / mid / deregulated",kpiSom:"max regulated rent p/m",
@@ -267,6 +273,7 @@ function nieuwProject(){
   document.getElementById('projectLijst').value='';
   const b=document.getElementById('bestand'); if(b) b.value='';
   document.getElementById('aanvulKaart').style.display='none'; extractData=null;
+  document.getElementById('btnWijzig').style.display='none';
   resultaten=[];laatsteData=null;
   invoerTab('json');
 }
