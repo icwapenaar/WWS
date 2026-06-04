@@ -114,6 +114,12 @@ input[type=file]{margin-top:6px;}
   </div>
   <button class="sec" style="padding:5px 12px;font-size:.8rem;" onclick="kopieerEerste()">Pas eerste regel toe op alle woningen</button>
   <button onclick="verwerkAanvul()">Verwerk antwoorden en bereken</button>
+  <div style="border-top:1px solid var(--licht);margin-top:12px;padding-top:10px;">
+    <label style="font-size:.85rem;font-weight:600;">Klopt er iets niet aan de uitgelezen tekening? Beschrijf het — de AI analyseert opnieuw:</label>
+    <textarea id="reviewOpm" style="height:60px;margin-top:4px;" placeholder="Bijv.: volgens mij heb je de woonkamer van woning 4 niet meegerekend — die is 35 m² op de eerste verdieping"></textarea>
+    <button class="sec" onclick="heranalyse()" id="btnReview">Analyseer opnieuw met deze opmerking</button>
+    <span id="reviewStatus" style="font-size:.8rem;color:var(--grijs);"></span>
+  </div>
   <div class="foot">Tip: vul de eerste woning in en klik op "Pas eerste regel toe op alle woningen" — bij renovaties zijn keuken en sanitair meestal gelijk. WOZ: zonder eigen beschikking per woning is de verdeling van de pand-WOZ indicatief (formeel geldt 85% taxatiewaarde of het minimum).</div>
 </div>
 
@@ -157,6 +163,27 @@ function toonAanvulVragen(data){
   if((data.building.heritage_status||'none')!=='none') document.getElementById('a_mon').value=data.building.heritage_status;
   document.getElementById('aanvulKaart').style.display='block';
   document.getElementById('aanvulKaart').scrollIntoView({behavior:'smooth'});
+}
+async function heranalyse(){
+  const opm=document.getElementById('reviewOpm').value.trim();
+  const st=document.getElementById('reviewStatus');
+  if(!opm){st.textContent='Beschrijf eerst wat er niet klopt.';return;}
+  if(!extractData){st.textContent='Geen tekening-data geladen.';return;}
+  st.textContent='AI analyseert de tekening opnieuw…';
+  document.getElementById('btnReview').disabled=true;
+  try{
+    const resp=await fetch('/api/review',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({opmerking:opm,data:extractData})});
+    const uit=await resp.json();
+    if(!resp.ok){st.textContent='';document.getElementById('meldingen').innerHTML='<div class="warn"><b>Heranalyse niet mogelijk:</b> '+(uit.error||resp.status)+'</div>';return;}
+    extractData=uit.data;
+    document.getElementById('invoer').value=JSON.stringify(uit.data,null,1);
+    document.getElementById('meldingen').innerHTML='<div class="warn"><b>Heranalyse uitgevoerd.</b> '+(uit.uitleg||'')+'</div>';
+    toonAanvulVragen(uit.data);
+    document.getElementById('reviewOpm').value='';
+    st.textContent='Klaar — controleer de vragen en bereken opnieuw.';
+  }catch(e){st.textContent='Fout: '+e.message;}
+  finally{document.getElementById('btnReview').disabled=false;}
 }
 function verdeelWoz(){
   const pand=+document.getElementById('a_pandwoz').value; if(!pand||!extractData)return;
