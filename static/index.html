@@ -140,7 +140,7 @@ input[type=file]{margin-top:6px;}
 </div>
 
 <div class="kaart" id="resultaatKaart" style="display:none;">
-  <h2><span data-i18n="hResult">3. Prijslijst per appartement</span> <button class="sec" style="float:right;padding:6px 12px;font-size:.8rem;" onclick="exportCsv()" data-i18n="btnCsv">Exporteer CSV</button><button class="sec" id="btnWijzig" style="float:right;padding:6px 12px;font-size:.8rem;display:none;" onclick="wijzigAntwoorden()" data-i18n="btnEdit">← Wijzig antwoorden</button></h2>
+  <h2><span data-i18n="hResult">3. Prijslijst per appartement</span> <button class="sec" style="float:right;padding:6px 12px;font-size:.8rem;" onclick="exportCsv()" data-i18n="btnCsv">Exporteer CSV</button></h2>
   <div class="kpi" id="kpi"></div>
   <div style="max-height:480px;overflow:auto;">
   <table id="resTabel"><thead><tr>
@@ -287,9 +287,7 @@ function verwerkAanvul(){
     data.building.construction_start_date="2027-12-31";
   } else { delete data.building.new_build_first_occupancy; delete data.building.construction_start_date; }
   document.getElementById('invoer').value=JSON.stringify(data,null,1);
-  document.getElementById('aanvulKaart').style.display='none';
   bereken();
-  document.getElementById('btnWijzig').style.display='inline-block';
   document.getElementById('resultaatKaart').scrollIntoView({behavior:'smooth'});
 }
 /* ============ TAAL (NL/EN) ============ */
@@ -583,7 +581,6 @@ function nieuwProject(){
   document.getElementById('projectLijst').value='';
   const b=document.getElementById('bestand'); if(b) b.value='';
   document.getElementById('aanvulKaart').style.display='none'; extractData=null; laatsteExtractMelding=null;
-  document.getElementById('btnWijzig').style.display='none';
   resultaten=[];laatsteData=null;
   invoerTab('json');
 }
