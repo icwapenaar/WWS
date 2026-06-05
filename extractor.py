@@ -21,7 +21,8 @@ RUIMTE_FUNCTIES = {
     "terras": ("outdoor_private", False), "balkon": ("outdoor_private", False),
     "dakterras": ("outdoor_private", False), "tuin": ("outdoor_private", False),
     "loggia": ("outdoor_private", False), "patio": ("outdoor_private", False),
-    "garage": ("garage", False),
+    "garage": ("garage", False), "kelder": ("internal_storage", False),
+    "wasruimte": ("internal_storage", False),
 }
 GEMEENSCHAPPELIJK = ["collectie", "gemeenschap", "gezamenlijk", "fietsenberging", "fietsen"]
 NEGEER = ["winkel", "kantoor", "commercieel", "lift", "schacht", "trappenhuis", "noodstroom"]

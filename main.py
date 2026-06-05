@@ -104,5 +104,85 @@ Regels: verzin geen oppervlaktes — alleen m2 uit de ruwe tekst of expliciet do
     except Exception as e:
         return JSONResponse({"error": f"Heranalyse mislukt: {type(e).__name__}: {e}"}, status_code=502)
 
+
+
+@app.post("/api/chat")
+async def api_chat(payload: dict):
+    """Chat-assistent met geheugen en tool-use voor ruimte-aanpassingen."""
+    if not ANTHROPIC_KEY:
+        return JSONResponse({"error": "Geen ANTHROPIC_API_KEY ingesteld (Render > Environment)."}, status_code=503)
+    berichten = payload.get("messages") or []
+    data = payload.get("data") or {}
+    samenvatting = payload.get("samenvatting", "")
+    spaces_kort = [{k: v for k, v in sp.items() if k in ("space_id","unit_id","space_name","space_function","area_m2_wws","heated")} for sp in data.get("spaces", [])]
+    tools = [{
+        "name": "pas_ruimtes_aan",
+        "description": "Voeg ruimtes toe aan, wijzig of verwijder ruimtes uit de huidige gebouwdata. Gebruik dit UITSLUITEND als de gebruiker expliciet om een aanpassing vraagt.",
+        "input_schema": {"type": "object", "properties": {
+            "toevoegen": {"type": "array", "items": {"type": "object", "properties": {
+                "unit_id": {"type": "string"}, "space_name": {"type": "string"},
+                "space_function": {"type": "string", "enum": ["living","bedroom","kitchen","bathroom","toilet_room","hall_circulation","internal_storage","attic","outdoor_private","outdoor_communal","communal_indoor","parking","technical"]},
+                "area_m2_wws": {"type": "number"}, "heated": {"type": "boolean"}},
+                "required": ["unit_id","space_name","space_function","area_m2_wws"]}},
+            "wijzigen": {"type": "array", "items": {"type": "object", "properties": {
+                "space_id": {"type": "string"}, "area_m2_wws": {"type": "number"},
+                "space_name": {"type": "string"}, "space_function": {"type": "string"}, "heated": {"type": "boolean"}},
+                "required": ["space_id"]}},
+            "verwijderen": {"type": "array", "items": {"type": "string"}}
+        }, "required": []}
+    }]
+    systeem = f"""Je bent de assistent van een WWS-huurpuntencalculator (Nederlands woningwaarderingsstelsel).
+Beantwoord vragen over de berekening kort, concreet en in de taal van de gebruiker.
+Gebruik de tool pas_ruimtes_aan alleen bij een expliciet wijzigingsverzoek; verzin geen oppervlaktes.
+Na een wijziging rekent de app zelf opnieuw — noem dus geen nieuwe puntentotalen, zeg wat je hebt aangepast.
+
+HUIDIGE BEREKENING:
+{samenvatting}
+
+HUIDIGE RUIMTES (space_id | unit | naam | functie | m2):
+{json.dumps(spaces_kort, ensure_ascii=False)}"""
+    conv = [{"role": m.get("role"), "content": m.get("content")} for m in berichten if m.get("role") in ("user","assistant") and m.get("content")]
+    totaal_wijz = 0
+    try:
+        async with httpx.AsyncClient(timeout=85) as client:
+            for _ in range(4):
+                resp = await client.post("https://api.anthropic.com/v1/messages",
+                    headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                    json={"model": "claude-sonnet-4-6", "max_tokens": 1500, "system": systeem,
+                          "messages": conv, "tools": tools})
+                if resp.status_code != 200:
+                    return JSONResponse({"error": f"Claude API-fout ({resp.status_code}): {resp.text[:200]}"}, status_code=502)
+                antw = resp.json()
+                if antw.get("stop_reason") != "tool_use":
+                    tekst = " ".join(b.get("text","") for b in antw.get("content",[]) if b.get("type")=="text").strip()
+                    return {"reply": tekst or "(geen antwoord)", "data": data, "changes": totaal_wijz}
+                conv.append({"role": "assistant", "content": antw["content"]})
+                resultaten = []
+                for blok in antw["content"]:
+                    if blok.get("type") != "tool_use": continue
+                    inp = blok.get("input", {})
+                    spaces = data.get("spaces", [])
+                    per_id = {sp["space_id"]: sp for sp in spaces}
+                    n = 0
+                    for w in inp.get("wijzigen", []):
+                        if w.get("space_id") in per_id:
+                            per_id[w["space_id"]].update({k: v for k, v in w.items() if k != "space_id"}); n += 1
+                    weg = set(inp.get("verwijderen", []))
+                    if weg:
+                        data["spaces"] = spaces = [sp for sp in spaces if sp["space_id"] not in weg]; n += len(weg)
+                    for i, nieuw in enumerate(inp.get("toevoegen", [])):
+                        nieuw.setdefault("space_id", f"chat-{len(spaces)}-{i}")
+                        nieuw.setdefault("heated", nieuw.get("space_function") in ("living","bedroom","kitchen","bathroom"))
+                        spaces.append(nieuw); n += 1
+                    data["spaces"] = spaces
+                    totaal_wijz += n
+                    resultaten.append({"type": "tool_result", "tool_use_id": blok["id"], "content": f"OK, {n} ruimte(s) aangepast."})
+                conv.append({"role": "user", "content": resultaten})
+            return {"reply": "Aanpassingen doorgevoerd.", "data": data, "changes": totaal_wijz}
+    except httpx.TimeoutException:
+        return JSONResponse({"error": "De assistent deed er te lang over (timeout). Probeer het opnieuw."}, status_code=504)
+    except Exception as e:
+        return JSONResponse({"error": f"Chat mislukt: {type(e).__name__}: {e}"}, status_code=502)
+
 # Static mount altijd als laatste (vangt alle overige paden)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
