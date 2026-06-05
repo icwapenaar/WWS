@@ -58,10 +58,11 @@ input[type=file]{margin-top:6px;}
   <div id="paneelJson">
     <div class="foot" style="margin-bottom:8px;">Tekening (PDF) laten uitlezen? Dat is een AI-stap die niet in dit losse bestand draait: stuur de plattegrond naar Claude en je krijgt het JSON-bestand terug dat je hier inleest. In de productie-app wordt dit een geïntegreerde uploadfunctie.</div>
     <input type="file" id="bestand" accept=".json,.pdf">
-    <button class="sec" onclick="laadVoorbeeld()" data-i18n="btnSample">Voorbeeldgebouw laden</button>
     <button onclick="bereken()" data-i18n="btnCalc">Bereken puntentelling</button>
-    <label style="display:block;font-size:.85rem;font-weight:600;margin-top:12px;" data-i18n="lblJson">Of plak/bewerk de JSON hieronder:</label>
-    <textarea id="invoer" spellcheck="false" placeholder='{"building":{...},"units":[...],"spaces":[...]}'></textarea>
+    <details style="margin-top:12px;">
+      <summary style="font-size:.85rem;font-weight:600;cursor:pointer;color:var(--blauw);" data-i18n="lblJson">Geavanceerd: bekijk/bewerk de JSON (klik om te openen)</summary>
+      <textarea id="invoer" spellcheck="false" style="margin-top:8px;" placeholder='{"building":{...},"units":[...],"spaces":[...]}'></textarea>
+    </details>
   </div>
 
   <div id="paneelHand" style="display:none;">
@@ -114,13 +115,15 @@ input[type=file]{margin-top:6px;}
   </div>
   <button class="sec" style="padding:5px 12px;font-size:.8rem;" onclick="kopieerEerste()">Pas eerste regel toe op alle woningen</button>
   <button onclick="verwerkAanvul()">Verwerk antwoorden en bereken</button>
-  <div style="border-top:1px solid var(--licht);margin-top:12px;padding-top:10px;">
-    <label style="font-size:.85rem;font-weight:600;">Klopt er iets niet aan de uitgelezen tekening? Beschrijf het — de AI analyseert opnieuw:</label>
-    <textarea id="reviewOpm" style="height:60px;margin-top:4px;" placeholder="Bijv.: volgens mij heb je de woonkamer van woning 4 niet meegerekend — die is 35 m² op de eerste verdieping"></textarea>
-    <button class="sec" onclick="heranalyse()" id="btnReview">Analyseer opnieuw met deze opmerking</button>
-    <span id="reviewStatus" style="font-size:.8rem;color:var(--grijs);"></span>
-  </div>
   <div class="foot">Tip: vul de eerste woning in en klik op "Pas eerste regel toe op alle woningen" — bij renovaties zijn keuken en sanitair meestal gelijk. WOZ: zonder eigen beschikking per woning is de verdeling van de pand-WOZ indicatief (formeel geldt 85% taxatiewaarde of het minimum).</div>
+</div>
+
+<div class="kaart" id="reviewKaart">
+  <h2>Klopt er iets niet aan de uitgelezen tekening?</h2>
+  <label style="font-size:.85rem;color:var(--grijs);">Beschrijf wat er mist of fout is — de AI analyseert de tekening opnieuw met jouw opmerking:</label>
+  <textarea id="reviewOpm" style="height:60px;margin-top:6px;" placeholder="Bijv.: volgens mij heb je de woonkamer van woning 4 niet meegerekend — die is 35 m² op de eerste verdieping"></textarea>
+  <button class="sec" onclick="heranalyse()" id="btnReview">Analyseer opnieuw met deze opmerking</button>
+  <span id="reviewStatus" style="font-size:.8rem;color:var(--grijs);"></span>
 </div>
 
 <div class="kaart" id="resultaatKaart" style="display:none;">
@@ -162,6 +165,7 @@ function toonAanvulVragen(data){
   });
   if((data.building.heritage_status||'none')!=='none') document.getElementById('a_mon').value=data.building.heritage_status;
   document.getElementById('aanvulKaart').style.display='block';
+  vertaalNieuw(document.getElementById('aanvulKaart'));
   document.getElementById('aanvulKaart').scrollIntoView({behavior:'smooth'});
 }
 async function heranalyse(){
@@ -169,21 +173,26 @@ async function heranalyse(){
   const st=document.getElementById('reviewStatus');
   if(!opm){st.textContent='Beschrijf eerst wat er niet klopt.';return;}
   if(!extractData){st.textContent='Geen tekening-data geladen.';return;}
-  st.textContent='AI analyseert de tekening opnieuw…';
   document.getElementById('btnReview').disabled=true;
+  let sec=0; st.textContent='AI analyseert… (0 s)';
+  const tik=setInterval(()=>{sec++;st.textContent='AI analyseert… ('+sec+' s, duurt normaal 10-30 s)';},1000);
+  const ctl=new AbortController(); const stop=setTimeout(()=>ctl.abort(),95000);
   try{
     const resp=await fetch('/api/review',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({opmerking:opm,data:extractData})});
-    const uit=await resp.json();
+      body:JSON.stringify({opmerking:opm,data:extractData}),signal:ctl.signal});
+    let uit; try{ uit=await resp.json(); }catch(e){ uit={error:'Onleesbaar antwoord van de server (HTTP '+resp.status+') — mogelijk een timeout van de hosting.'}; }
     if(!resp.ok){st.textContent='';document.getElementById('meldingen').innerHTML='<div class="warn"><b>Heranalyse niet mogelijk:</b> '+(uit.error||resp.status)+'</div>';return;}
     extractData=uit.data;
     document.getElementById('invoer').value=JSON.stringify(uit.data,null,1);
-    document.getElementById('meldingen').innerHTML='<div class="warn"><b>Heranalyse uitgevoerd.</b> '+(uit.uitleg||'')+'</div>';
+    document.getElementById('meldingen').innerHTML='<div class="warn"><b>Heranalyse uitgevoerd</b> ('+(uit.aantal_wijzigingen||0)+' wijziging(en)). '+(uit.uitleg||'')+'</div>';
     toonAanvulVragen(uit.data);
     document.getElementById('reviewOpm').value='';
     st.textContent='Klaar — controleer de vragen en bereken opnieuw.';
-  }catch(e){st.textContent='Fout: '+e.message;}
-  finally{document.getElementById('btnReview').disabled=false;}
+  }catch(e){
+    st.textContent='';
+    document.getElementById('meldingen').innerHTML='<div class="warn"><b>Heranalyse afgebroken:</b> '+(e.name==='AbortError'?'duurde langer dan 95 seconden — probeer het nog eens (na de slaapstand van de gratis hosting is de eerste keer traag).':e.message)+'</div>';
+  }
+  finally{clearInterval(tik);clearTimeout(stop);document.getElementById('btnReview').disabled=false;}
 }
 function verdeelWoz(){
   const pand=+document.getElementById('a_pandwoz').value; if(!pand||!extractData)return;
@@ -206,6 +215,7 @@ function kopieerEerste(){
 function wijzigAntwoorden(){
   if(!extractData)return;
   document.getElementById('aanvulKaart').style.display='block';
+  vertaalNieuw(document.getElementById('aanvulKaart'));
   document.getElementById('aanvulKaart').scrollIntoView({behavior:'smooth'});
 }
 function verwerkAanvul(){
@@ -252,7 +262,7 @@ let TAAL = localStorage.getItem('wws_taal') || 'nl';
 const I18N = {
  nl:{sub:"Rekenkern v1 — zelfstandige woonruimte én kamers (WWSO), prijspeil 1 januari 2026. Upload een plattegrond (PDF) of JSON, of voer handmatig in. Indicatief; alleen de Huurcommissie doet bindende uitspraken.",
   hLoad:"1. Gegevens laden",hVragen:"2. Aanvullende vragen — deze gegevens staan niet op een tekening",tabJson:"JSON-import (model/tekening)",tabHand:"Handmatige invoer",
-  btnSample:"Voorbeeldgebouw laden",btnCalc:"Bereken puntentelling",lblJson:"Of plak/bewerk de JSON hieronder:",
+  btnSample:"Voorbeeldgebouw laden",btnCalc:"Bereken puntentelling",lblJson:"Geavanceerd: bekijk/bewerk de JSON (klik om te openen)",
   hResult:"2. Prijslijst per appartement",btnCsv:"Exporteer CSV",
   btnAdvies:"Optimalisatie-advies: route naar de vrije sector (≥ 187 punten)",
   btnSave:"Project opslaan",btnNew:"Nieuw project",btnEdit:"← Wijzig antwoorden",
@@ -266,7 +276,7 @@ const I18N = {
   auditNoot:""},
  en:{sub:"Calculation engine v1 — self-contained dwellings and rooms (Dutch WWS housing valuation system), price level 1 January 2026. Upload a floor plan (PDF) or JSON, or enter data manually. Indicative; only the Rent Tribunal (Huurcommissie) issues binding rulings.",
   hLoad:"1. Load data",hVragen:"2. Additional questions — this data is not on a drawing",tabJson:"JSON import (model/drawing)",tabHand:"Manual entry (Dutch)",
-  btnSample:"Load sample building",btnCalc:"Calculate points",lblJson:"Or paste/edit the JSON below:",
+  btnSample:"Load sample building",btnCalc:"Calculate points",lblJson:"Advanced: view/edit the JSON (click to open)",
   hResult:"3. Rent schedule per apartment",btnCsv:"Export CSV",
   btnAdvies:"Optimisation advice: route to the deregulated sector (≥ 187 points)",
   btnSave:"Save project",btnNew:"New project",btnEdit:"← Edit answers",
@@ -280,8 +290,194 @@ const I18N = {
   auditNoot:"Note: calculation details are shown in Dutch — the source language of the statutory rules."}
 };
 const TT=k=>I18N[TAAL][k];
+/* ---- Volledige NL-EN vertaling: frasewoordenboek + leaf-vertaler ---- */
+const VERT=[["1. Vertrekken","1. Rooms"],["2. Overige ruimten","2. Other spaces"],["3. Verwarming","3. Heating"],["4. Energieprestatie","4. Energy performance"],["5. Keuken","5. Kitchen"],["6. Sanitair","6. Sanitary"],["7. Handicap","7. Disability"],["8. Buitenruimte","8. Outdoor space"],["9. Gemeensch. ruimten","9. Communal spaces"],["12. Zorgwoning","12. Care housing"],["12. Bijzonder","12. Special"],["13. Aftrek","13. Deductions"],["10. Parkeren","10. Parking"],["Totaal","Total"],["Prijs","Price"],
+
+["Beschrijf wat er mist of fout is — de AI analyseert de tekening opnieuw met jouw opmerking:","Describe what is missing or wrong — the AI re-analyses the drawing with your remark:"],
+["Klopt er iets niet aan de uitgelezen tekening?","Something wrong in the extracted drawing?"],
+["Analyseer opnieuw met deze opmerking","Re-analyse with this remark"],
+["Bijv.: volgens mij heb je de woonkamer van woning 4 niet meegerekend — die is 35 m² op de eerste verdieping","E.g.: I think you missed the living room of unit 4 — it is 35 m² on the first floor"],
+["Tip: vul de eerste woning in en klik op \"Pas eerste regel toe op alle woningen\" — bij renovaties zijn keuken en sanitair meestal gelijk. WOZ: zonder eigen beschikking per woning is de verdeling van de pand-WOZ indicatief (formeel geldt 85% taxatiewaarde of het minimum).","Tip: fill in the first unit and click \"Apply first row to all units\" — in renovations kitchens and bathrooms are usually identical. WOZ: without an individual assessment per unit the building-WOZ split is indicative (formally 85% of appraisal value or the statutory minimum applies)."],
+["Nieuwbouw/transformatie: eerste bewoning na 1-7-2024 én start bouw vóór 1-1-2028 (+10% opslag bij middenhuur, 20 jaar)","New-build/transformation: first occupancy after 1-7-2024 and construction start before 1-1-2028 (+10% surcharge for mid-rent, 20 years)"],
+["Standaard (inductie, koelkast, oven, vaatwasser, afzuiging)","Standard (induction, fridge, oven, dishwasher, extractor)"],
+["Compleet (+ vriezer, magnetron, quooker)","Complete (+ freezer, microwave, boiling-water tap)"],
+["Standaard (afscheiding, radiator, meubel)","Standard (enclosure, radiator, vanity)"],
+["Luxe (+ kast, thermostaat)","Luxury (+ cabinet, thermostatic)"],
+["Pas eerste regel toe op alle woningen","Apply first row to all units"],
+["Verwerk antwoorden en bereken","Process answers and calculate"],
+["geclassificeerd als niet meetellend","classified as not counting"],
+["geclassificeerd als","classified as"],
+["voldoet aan vertrek-criteria (≥4 m² e.d.)","meets habitable-room criteria (≥4 m² etc.)"],
+["keuken/badkamer is altijd een vertrek","kitchen/bathroom always counts as habitable room"],
+["voldoet niet aan vertrek-criteria","does not meet habitable-room criteria"],
+["toiletruimte telt als overige ruimte","toilet room counts as other space"],
+["techniekruimte ≥ 2 m²","technical room ≥ 2 m²"],
+["hal/gang/overloop — geen oppervlaktepunten","hall/corridor — no area points"],
+["< 2 m² — telt niet mee","< 2 m² — does not count"],
+["< 4 m², wel ≥ 2 m²","< 4 m², but ≥ 2 m²"],
+["m²-afronding: ≥ 0,50 omhoog","m² rounding: ≥ 0.50 up"],
+["Zolder zonder vaste trap: aftrek","Attic without fixed stairs: deduction"],
+["max −5, niet verder dan de zolderwaarde","max −5, never more than the attic value"],
+["zolder zonder opgave vaste trap — gerekend als overige ruimte mét vaste trap","attic without fixed-stairs info — counted as other space with fixed stairs"],
+["(overige/verkeersruimte) verwarmd","(other/circulation space) heated"],
+["verwarmd én verkoeld","heated and cooled"],
+["open keuken telt afzonderlijk","open kitchen counts separately"],
+["max 4 punten samen","max 4 points combined"],["max 2 punten","max 2 points"],
+["Aftopping overige/verkeersruimten op 4","Cap other/circulation at 4"],["Aftopping verkoeling op 2","Cap cooling at 2"],
+["geen energielabel — gerekend op bouwjaar","no energy label — based on construction year"],
+["geen label en geen bouwjaar — 0 punten.","no label and no construction year — 0 points."],
+["geen label → bouwjaar","no label → construction year"],
+["monument: minpunten vervallen (0)","monument: negative points waived (0)"],
+["energielabel","energy label"],["meergezins","multi-family"],["eengezins","single-family"],
+["Aanrechtlengte niet ingevuld","Counter length not filled in"],
+["Aanrecht < 1 m of basiseisen niet voldaan","Counter < 1 m or basic requirements not met"],
+["0 punten voor hele rubriek","0 points for the entire section"],
+["Cap: extra's afgetopt op bad/douchepunten","Cap: extras capped at bath/shower points"],
+["Cap: extra's afgetopt op basispunten","Cap: extras capped at base points"],
+["extra's nooit meer dan aanrechtpunten","extras never exceed counter points"],
+["Cap op bad/douchepunten","Cap at bath/shower points"],
+["Cap: extra's","Cap: extras"],
+["Inductiekookplaat","Induction hob"],["Keramische kookplaat","Ceramic hob"],["Gaskookplaat","Gas hob"],
+["Inbouwkoelkast","Built-in fridge"],["Inbouwvrieskast","Built-in freezer"],
+["Elektrische oven","Electric oven"],["Gasoven","Gas oven"],["Magnetron","Microwave"],["Vaatwasser","Dishwasher"],
+["Afzuigkap","Extractor hood"],["Extra kastruimte","Extra cabinets"],
+["Eenhandsmengkraan badkamer","Single-lever tap (bathroom)"],["Eenhandsmengkraan","Single-lever tap"],
+["Thermostaatkraan badkamer","Thermostatic tap (bathroom)"],["Thermostaatkraan","Thermostatic tap"],
+["Kokendwaterkraan","Boiling-water tap"],
+["Staand toilet in toiletruimte","Standing toilet in toilet room"],["Staand toilet in badkamer","Standing toilet in bathroom"],
+["Hangend toilet in toiletruimte","Wall-hung toilet in toilet room"],["Hangend toilet in badkamer","Wall-hung toilet in bathroom"],
+["Staand toilet, toiletruimte","Standing toilet, toilet room"],["Staand toilet, badkamer","Standing toilet, bathroom"],
+["Hangend toilet, toiletruimte","Wall-hung toilet, toilet room"],["Hangend toilet, badkamer","Wall-hung toilet, bathroom"],
+["Meerpersoonswastafel(s)","Double basin(s)"],["Wastafel(s)","Washbasin(s)"],
+["1 punt per stuk","1 point each"],["1,5 per stuk","1.5 each"],["1 punt per m²","1 point per m²"],
+["WWSO-tarief (lager dan zelfstandig)","WWSO rate (lower than self-contained)"],
+["Vaste doucheafscheiding","Fixed shower enclosure"],["Handdoekradiator","Towel radiator"],
+["Badmeubel met wastafel","Vanity unit with basin"],["Badmeubel","Vanity unit"],
+["Kastruimte badkamer","Bathroom cabinet"],["Kastruimte","Cabinet"],
+["Stopcontacten bij wastafel","Sockets at basin"],["Bubbelbad","Whirlpool"],
+["Badkamer voldoet niet aan kwaliteitseisen","Bathroom does not meet quality requirements"],
+["extra voorzieningen tellen niet","extras do not count"],
+["badkamer voldoet aan kwaliteitseisen","bathroom meets quality requirements"],
+["Netto-investering","Net investment"],["Investering ÷ 332","Investment ÷ 332"],
+["Vast: aanwezigheid privé-buitenruimte","Fixed: presence of private outdoor space"],
+["eenmalig 2 punten","one-off 2 points"],
+["Geen enkele buitenruimte","No outdoor space at all"],["vaste aftrek","fixed deduction"],
+["voldoet niet (valbeveiliging/toegang)","does not qualify (fall protection/access)"],
+["privé buitenruimte","private outdoor space"],["gemeensch. buitenruimte","communal outdoor space"],
+["Aftopping op maximum","Capped at maximum"],["max 15 punten","max 15 points"],["Aftopping op 15","Capped at 15"],
+["gemeenschappelijke ruimte zonder aantal adressen (contractdata) — niet meegeteld","communal space without number of addresses (contract data) — not counted"],
+["parkeren zonder aantal adressen — niet meegeteld","parking without number of addresses — not counted"],
+["aantal adressen onbekend","number of addresses unknown"],["contractdata ontbreekt","contract data missing"],
+["garage in complex","garage in complex"],["buiten met dak","outdoor roofed"],["buiten zonder dak","outdoor open"],
+["laadpaal","charging point"],
+["minimum-WOZ toegepast","statutory minimum WOZ applied"],
+["geen WOZ-waarde — minimum","no WOZ value — minimum"],
+["33%-cap: WOZ-punten beperkt tot 33% van totaal","33% cap: WOZ points limited to 33% of total"],
+["naar beneden afgerond op hele punten","rounded down to whole points"],
+["Vangnet: zonder cap ≥ 187 → minimaal 186 punten","Safety net: ≥ 187 without cap → minimum 186 points"],
+["WOZ/m² t.o.v. COROP-gemiddelde","WOZ/m² vs. regional (COROP) average"],
+["niet opgegeven — laagste waardering (10)","not provided — lowest score (10)"],
+["WOZ t.o.v. regiogemiddelde niet opgegeven — 10 punten aangehouden","WOZ vs. regional average not provided — 10 points assumed"],
+["lager / onbekend","lower / unknown"],["> 10% hoger","> 10% higher"],
+["Video/audio-intercom met deuropener","Video/audio intercom with door release"],
+["Zorgwoning +35% over rubriek 1-11","Care housing +35% on sections 1-11"],
+["+35% over rubriek 1–11","+35% on sections 1–11"],
+["Privévertrekken < 8 m²","Private rooms < 8 m²"],
+["Hospitasituatie (toegang via vertrek verhuurder)","Live-in landlord (access via landlord room)"],
+["Ruitoppervlak hoofdvertrek < 0,75 m²","Window area main room < 0.75 m²"],
+["Raamkozijn > 1,60 m boven vloer","Window sill > 1.60 m above floor"],
+["Subtotaal","Subtotal"],["eindafronding op hele punten","final rounding to whole points"],
+["≥ 0,5 omhoog","≥ 0.5 up"],["hele punten","whole points"],["eindafronding","final rounding"],
+["Opslagen op maximale huurprijs","Surcharges on maximum rent"],["Opslag:","Surcharge:"],
+["rijksmonument +35%","national monument +35%"],
+["stadsgezicht +5%","townscape +5%"],["nieuwbouw +10%","new-build +10%"],
+["cumulatief percentage","cumulative percentage"],
+["Energielabel 2 stappen omhoog","Energy label up 2 steps"],["Energielabel 1 stap omhoog","Energy label up 1 step"],
+["sterk variërend (isolatie/installaties)","highly variable (insulation/systems)"],["sterk variërend","highly variable"],
+["Verkoeling in 2 vertrekken (vaste airco ≥ A+, ≥ 100 W/m², of warmtepomp met koelfunctie)","Cooling in 2 rooms (fixed AC ≥ A+, ≥ 100 W/m², or heat pump with cooling)"],
+["Keuken: aanrecht > 2 m + volledige inbouwapparatuur (tot cap)","Kitchen: counter > 2 m + full built-in appliances (up to cap)"],
+["Tweede (hangend) toilet in badkamer","Second (wall-hung) toilet in bathroom"],
+["Bad én douche i.p.v. alleen douche + sanitaire extra's","Bath and shower instead of shower only + sanitary extras"],
+["Extra (meerpersoons)wastafel","Extra (double) washbasin"],
+["Buitenruimte toevoegen (balkon/terras ≈ 6 m²)","Add outdoor space (balcony/terrace ≈ 6 m²)"],
+["vergunning! bij monument vaak lastig","permit! often difficult for monuments"],
+["meerprijs","extra cost"],["ca. €","approx. €"],["per vertrek","per room"],
+["punten tot vrije sector)","points to deregulated sector)"],["al vrije sector","already deregulated"],
+["Kortste route naar ≥ 187:","Shortest route to ≥ 187:"],
+["Maatregel","Measure"],["Nieuw totaal","New total"],["Indicatieve kosten","Indicative costs"],
+["Vrije sector niet haalbaar met deze maatregelen","Deregulated sector not achievable with these measures"],
+["Resterende opties: WOZ-stijging afwachten of plattegrond-aanpassing (meer m²).","Remaining options: wait for WOZ increase or floor-plan changes (more m²)."],
+["Kamers zijn altijd gereguleerd","Rooms are always regulated"],
+["2. Aanvullende vragen — deze gegevens staan niet op een tekening","2. Additional questions — this data is not on a drawing"],
+["Energielabel (alle woningen)","Energy label (all units)"],
+["WOZ hele pand (€)","WOZ whole building (€)"],["verdeling naar rato GO","pro-rata by floor area"],
+["Verdeel WOZ over woningen","Distribute WOZ over units"],
+["Monumentstatus","Heritage status"],["Rijksmonument (+35%)","National monument (+35%)"],
+["Gemeentelijk/prov. (+15%)","Municipal/prov. (+15%)"],["Stadsgezicht (+5%)","Townscape (+5%)"],
+["Keukenapparatuur","Kitchen appliances"],["Geen/minimaal","None/minimal"],
+["Verkoeling (vertrekken)","Cooling (rooms)"],["1 vertrek (+1)","1 room (+1)"],["2 vertrekken (+2)","2 rooms (+2)"],
+["Badkamer-extra's","Bathroom extras"],["Aanrechtlengte (cm)","Counter length (cm)"],["Aanrecht (cm)","Counter (cm)"],["Aanrecht","Counter"],
+["Hangend, toiletruimte","Wall-hung, toilet room"],["Hangend, badkamer","Wall-hung, bathroom"],
+["Staand, toiletruimte","Standing, toilet room"],["Staand, badkamer","Standing, bathroom"],
+["Verhuurvorm","Letting type"],["Zelfstandig","Self-contained"],["Kamers (onzelfstandig)","Rooms (non-self-contained)"],
+["Woonvorm","Building type"],["Meergezins","Multi-family"],["Eengezins","Single-family"],
+["Bouwjaar","Construction year"],["Aantal adressen in gebouw","Addresses in building"],
+["Gedeelde ruimten (alle kamers)","Shared spaces (all rooms)"],
+["Aantal kamers met toegang","Rooms with access"],["+ gedeelde ruimte","+ shared space"],
+["+ Woning toevoegen","+ Add dwelling"],["+ Kamer toevoegen","+ Add room"],
+["Bereken puntentelling","Calculate points"],["Toon als JSON","Show as JSON"],
+["WOZ-waarde (€)","WOZ value (€)"],["Geen (bouwjaar)","None (construction year)"],
+["Kookplaat","Hob"],["Inductie","Induction"],["Keramisch","Ceramic"],
+["vaste doucheafscheiding","fixed shower enclosure"],["handdoekradiator","towel radiator"],
+["badmeubel","vanity unit"],["vaatwasser","dishwasher"],["inb. koelkast","built-in fridge"],
+["inb. oven","built-in oven"],["afzuigkap","extractor hood"],["verwijder","remove"],["+ ruimte","+ room"],
+["Keuken gedeeld met (kamers)","Kitchen shared with (rooms)"],["Sanitair gedeeld met (kamers)","Sanitary shared with (rooms)"],
+["WOZ/m² t.o.v. regio","WOZ/m² vs. region"],["Onbekend (10 pt)","Unknown (10 pts)"],
+["> 10% lager (10)","> 10% lower (10)"],["> 10% hoger (14)","> 10% higher (14)"],
+["video-intercom (+0,25)","video intercom (+0.25)"],["hospitasituatie (−4)","live-in landlord (−4)"],
+["ruit hoofdvertrek < 0,75 m² (−4)","window main room < 0.75 m² (−4)"],["kozijn > 1,60 m (−4)","sill > 1.60 m (−4)"],
+["Woonkamer/woonruimte","Living room"],["Toiletruimte","Toilet room"],
+["Hal/gang","Hall/corridor"],["Berging intern","Internal storage"],
+["Buitenruimte privé","Private outdoor"],["Techniekruimte","Technical room"],
+["Binnenruimte (vertrek)","Indoor (habitable)"],["Binnenruimte (overig/berging)","Indoor (other/storage)"],
+["Parkeren (buiten zonder dak)","Parking (outdoor open)"],
+["Volledige verantwoording","Full justification"],
+["— controleer elke regel; aanpassen kan via handmatige invoer of de JSON","— check every line; adjust via manual entry or the JSON"],
+["niet ingevuld","not filled in"],
+["Klaar — controleer de vragen en bereken opnieuw.","Done — review the questions and recalculate."],
+["Heranalyse uitgevoerd","Re-analysis completed"],["wijziging(en)","change(s)"],
+["Gedeelde ruimte","Shared space"],["gedeelde ruimte","shared space"],["gedeeld vertrek","shared room"],["(privé)","(private)"],
+["Woonkamer/keuken","Living room/kitchen"],["Woonkamer","Living room"],["woonkamer","living room"],
+["Slaapkamer","Bedroom"],["slaapkamer","bedroom"],
+["Keuken","Kitchen"],["keuken","kitchen"],["Badkamer","Bathroom"],["badkamer","bathroom"],
+["Berging","Storage"],["berging","storage"],
+["Buitenruimte","Outdoor space"],["buitenruimte","outdoor space"],["Terras","Terrace"],["terras","terrace"],
+["Balkon","Balcony"],["Tuin","Garden"],["tuin","garden"],
+["vertrek","habitable room"],["overige ruimte","other space"],
+["Verwarmd","Heated"],["Verkoeld","Cooled"],["verwarmd","heated"],
+["Functie","Function"],["Soort","Kind"],["naam","name"],["Ruimte","Room"],
+["adressen","addresses"],["kamers","rooms"],["punten","points"],["Toilet","Toilet"],["toilet","toilet"],
+["Aandachtspunten","Points of attention"],["Geen","None"],["Gebouw","Building"],["Bad + douche","Bath + shower"],["Bad/douche","Bath/shower"],["Douche","Shower"],["Bad","Bath"]
+];
+VERT.sort((a,b)=>b[0].length-a[0].length);
+function fEN(s){ if(TAAL!=='en'||!s) return s; let r=s; for(const [nl,en] of VERT){ if(r.includes(nl)) r=r.split(nl).join(en); } return r; }
+function tagLeaves(root){
+  (root||document).querySelectorAll('label,h2,th,td,button,option,summary,b,span,small,legend,div.foot,div.sub').forEach(el=>{
+    if(el.id==='taalKnop'||el.closest('textarea')) return;
+    if(el.hasAttribute('data-i18n')) return;
+    if(el.children.length===0){ const t=el.textContent; if(t && t.trim().length>1 && !el.dataset.nl) el.dataset.nl=t; }
+  });
+  (root||document).querySelectorAll('textarea[placeholder],input[placeholder]').forEach(el=>{ if(!el.dataset.nlph) el.dataset.nlph=el.placeholder; });
+}
+function applyVert(root){
+  (root||document).querySelectorAll('[data-nl]').forEach(el=>{ el.textContent = TAAL==='en'? fEN(el.dataset.nl) : el.dataset.nl; });
+  (root||document).querySelectorAll('[data-nlph]').forEach(el=>{ el.placeholder = TAAL==='en'? fEN(el.dataset.nlph) : el.dataset.nlph; });
+}
+function vertaalNieuw(el){ tagLeaves(el); if(TAAL==='en') applyVert(el); }
+
 function pasTaalToe(){
   document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(I18N[TAAL][k])el.textContent=I18N[TAAL][k];});
+  tagLeaves(document); applyVert(document);
   document.getElementById('taalKnop').textContent = TAAL==='nl'?'EN':'NL';
   const ths=document.querySelectorAll('#resTabel thead th');
   if(ths.length===15) TT('kop').forEach((t,i)=>{ths[i].innerHTML = i===12?'<b>'+t+'</b>':t;});
@@ -767,6 +963,7 @@ function voegUnitToe(){
   <tbody class="ruimtes"></tbody></table>
   <button class="sec" style="padding:4px 10px;font-size:.78rem;" onclick="voegRuimteToe(this)">+ ruimte</button>`;
   document.getElementById('h_units').appendChild(div);
+  vertaalNieuw(div);
   if(document.getElementById('h_verhuur').value==="rooms") div.querySelector('.kamerExtra').style.display='block';
   for(let i=0;i<3;i++) voegRuimteToe(div.querySelector('button.sec:last-of-type'));
   const rs=div.querySelectorAll('.ruimtes tr');
@@ -783,7 +980,7 @@ function voegRuimteToe(btn){
   <td style="text-align:center;"><input type="checkbox" class="r_vw" checked></td>
   <td style="text-align:center;"><input type="checkbox" class="r_vk"></td>
   <td><button class="sec" style="padding:2px 8px;font-size:.75rem;" onclick="this.closest('tr').remove()">×</button></td>`;
-  tb.appendChild(tr);
+  tb.appendChild(tr); vertaalNieuw(tr);
 }
 function kamerModusUI(){
   const rooms=document.getElementById('h_verhuur').value==="rooms";
@@ -800,7 +997,7 @@ function voegGedeeldToe(){
   <td><input type="number" class="g_n2" value="4" min="2" ${SEL}></td>
   <td style="text-align:center;"><input type="checkbox" class="g_vw"></td>
   <td><button class="sec" style="padding:2px 8px;font-size:.75rem;" onclick="this.closest('tr').remove()">×</button></td>`;
-  document.getElementById('g_ruimtes').appendChild(tr);
+  document.getElementById('g_ruimtes').appendChild(tr); vertaalNieuw(tr);
 }
 function verzamelHand(){
   const data={building:{building_id:"HANDMATIG",building_type:document.getElementById('h_vorm').value,
@@ -921,15 +1118,15 @@ function toonAdvies(){
     html+='<div style="margin-bottom:14px;"><b>'+u.unit_id+' — '+a.basis.tot+' punten'+(a.al?' (al vrije sector ✓)':' (nog '+(187-a.basis.tot)+' punten tot vrije sector)')+'</b>';
     if(!a.al){
       html+='<table style="margin-top:4px;"><tr><th style="position:static;">Maatregel</th><th style="position:static;">Punten</th><th style="position:static;">Nieuw totaal</th><th style="position:static;">Indicatieve kosten</th></tr>';
-      a.los.forEach(l=>{html+='<tr><td>'+l.naam+'</td><td>+'+l.delta+'</td><td>'+l.nieuw+(l.nieuw>=187?' ✓':'')+'</td><td>'+l.kosten+'</td></tr>';});
+      a.los.forEach(l=>{html+='<tr><td>'+fEN(l.naam)+'</td><td>+'+l.delta+'</td><td>'+l.nieuw+(l.nieuw>=187?' ✓':'')+'</td><td>'+fEN(l.kosten)+'</td></tr>';});
       html+='</table>';
-      if(a.combo) html+='<div style="margin-top:6px;"><b>Kortste route naar ≥ 187:</b> '+a.combo.maatregelen.map(m=>m.naam+' (+'+m.delta+')').join(' → ')+' = <b>'+a.combo.tot+' punten</b></div>';
+      if(a.combo) html+='<div style="margin-top:6px;"><b>Kortste route naar ≥ 187:</b> '+a.combo.maatregelen.map(m=>fEN(m.naam)+' (+'+m.delta+')').join(' → ')+' = <b>'+a.combo.tot+' punten</b></div>';
       else html+='<div style="margin-top:6px;color:var(--rood);"><b>Vrije sector niet haalbaar met deze maatregelen</b> (maximum: '+a.restTot+' punten). Resterende opties: WOZ-stijging afwachten of plattegrond-aanpassing (meer m²).</div>';
     }
     html+='</div>';
   });
   html+='<div style="font-size:.75rem;color:var(--grijs);">Kosten zijn grove indicaties. Let op: verkoeling telt alleen met vaste installatie (label ≥ A+, ≥ 100 W/m²) of NTA-energielabel met koelfunctie; buitenruimte en gevelwijzigingen bij een rijksmonument vereisen vergunning. Boven 187 punten is de huur vrij — de genoemde maatregelen verhogen dan ook de markthuurwaarde, maar dat valt buiten deze berekening.</div>';
-  d.innerHTML=html; d.style.display='block';
+  d.innerHTML=html; d.style.display='block'; vertaalNieuw(d);
 }
 /* ============ UI ============ */
 let resultaten=[];
@@ -945,7 +1142,7 @@ function bereken(){
   laatsteData = data;
   const kamerModus = data.building.letting_type==="rooms";
   resultaten = data.units.map(u=> kamerModus? rekenKamer(u,data.spaces,data.building,warns) : rekenUnit(u,data.spaces,data.building,warns));
-  if(warns.length) meld.innerHTML='<div class="warn"><b>Aandachtspunten ('+warns.length+'):</b><br>'+[...new Set(warns)].slice(0,12).join('<br>')+(warns.length>12?'<br>…':'')+'</div>';
+  if(warns.length) meld.innerHTML='<div class="warn"><b>'+(TAAL==='en'?'Points of attention':'Aandachtspunten')+' ('+warns.length+'):</b><br>'+[...new Set(warns)].slice(0,12).map(w=>fEN(w)).join('<br>')+(warns.length>12?'<br>…':'')+'</div>';
   const body=document.getElementById('resBody'); body.innerHTML='';
   const f=x=>x.toLocaleString('nl-NL');
   resultaten.forEach((r,i)=>{
@@ -970,13 +1167,13 @@ function toonDetail(i){
   html+='<table style="margin-top:6px;"><tr><th style="position:static;">Rubriek</th><th style="position:static;">Onderdeel</th><th style="position:static;text-align:right;">Punten</th><th style="position:static;">Toelichting / reden</th></tr>';
   let vorige="";
   r.aud.forEach(a=>{
-    html+='<tr><td>'+(a.rubriek!==vorige?'<b>'+a.rubriek+'</b>':'')+'</td><td>'+a.wat+'</td><td style="text-align:right;">'+
-      (a.pt? (a.pt>0?'+':'')+(Math.round(a.pt*100)/100).toLocaleString('nl-NL') : '·')+'</td><td style="color:var(--grijs);font-size:.78rem;">'+a.toel+'</td></tr>';
+    html+='<tr><td>'+(a.rubriek!==vorige?'<b>'+fEN(a.rubriek)+'</b>':'')+'</td><td>'+fEN(a.wat)+'</td><td style="text-align:right;">'+
+      (a.pt? (a.pt>0?'+':'')+(Math.round(a.pt*100)/100).toLocaleString('nl-NL') : '·')+'</td><td style="color:var(--grijs);font-size:.78rem;">'+fEN(a.toel)+'</td></tr>';
     vorige=a.rubriek;
   });
   html+='<tr><td colspan=2><b>Totaal</b></td><td style="text-align:right;"><b>'+r.tot+' pt</b></td><td>'+
-    (r.vrij?'Vrije sector — huur vrij':'<b>'+eur(r.huur)+'</b>'+(r.opslagen.length?' (basis '+eur(r.basisHuur)+' + '+r.opslagen.join(', ')+')':''))+'</td></tr></table>';
-  d.innerHTML=html; d.style.display='block';
+    (r.vrij?'Vrije sector — huur vrij':'<b>'+eur(r.huur)+'</b>'+(r.opslagen.length?' ('+(TAAL==='en'?'base ':'basis ')+eur(r.basisHuur)+' + '+fEN(r.opslagen.join(', '))+')':''))+'</td></tr></table>';
+  d.innerHTML=html; d.style.display='block'; vertaalNieuw(d);
 }
 function exportCsv(){
   let csv="unit;punten;sector;max_huur_eur\n";
