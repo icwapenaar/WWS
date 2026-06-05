@@ -73,12 +73,18 @@ input[type=file]{margin-top:6px;}
         <select id="h_vorm" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;"><option value="multi_family">Meergezins</option><option value="single_family">Eengezins</option></select></div>
       <div><label style="font-size:.8rem;font-weight:600;">Monumentstatus</label>
         <select id="h_mon" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;">
-          <option value="none">Geen</option><option value="national_monument">Rijksmonument (+35%)</option>
+          <option value="none">Geen</option><option value="national_monument">Rijksmonument, contract na 1-7-2024 (+35% huur)</option><option value="national_monument_pre2024">Rijksmonument, contract vóór 1-7-2024 (+50 punten)</option>
           <option value="municipal_monument">Gemeentelijk/prov. (+15%)</option><option value="protected_townscape">Stadsgezicht (+5%)</option></select></div>
       <div><label style="font-size:.8rem;font-weight:600;">Bouwjaar</label>
         <input type="number" id="h_bj" value="2000" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;"></div>
       <div><label style="font-size:.8rem;font-weight:600;">Aantal adressen in gebouw</label>
         <input type="number" id="h_adr" value="1" min="1" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;"></div>
+    </div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:.8rem;margin-bottom:8px;">
+      <label><input type="checkbox" id="h_zorg"> zorgwoning (alle criteria; +35% punten)</label>
+      <label><input type="checkbox" id="h_nb1519"> nieuwbouw/hoogniveau-renovatie 2015-2019</label>
+      <label><input type="checkbox" id="h_kleinAU"> kleine nieuwbouw &lt; 40 m² Amsterdam/Utrecht 2018-2022</label>
+      <label><input type="checkbox" id="h_nieuwbouw"> nieuwbouwopslag: eerste bewoning na 1-7-2024, start vóór 2028 (+10%)</label>
     </div>
     <div id="h_gedeeld" style="display:none;border:1px dashed #c4ccd6;border-radius:10px;padding:10px;margin:8px 0;">
       <b style="color:var(--blauw);font-size:.85rem;">Gedeelde ruimten (alle kamers)</b>
@@ -99,18 +105,21 @@ input[type=file]{margin-top:6px;}
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">
     <div><label style="font-size:.8rem;font-weight:600;">Monumentstatus</label>
       <select id="a_mon" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;">
-        <option value="none">Geen</option><option value="national_monument">Rijksmonument (+35%)</option>
+        <option value="none">Geen</option><option value="national_monument">Rijksmonument, contract na 1-7-2024 (+35% huur)</option><option value="national_monument_pre2024">Rijksmonument, contract vóór 1-7-2024 (+50 punten)</option>
         <option value="municipal_monument">Gemeentelijk/prov. (+15%)</option><option value="protected_townscape">Stadsgezicht (+5%)</option></select></div>
     <div><label style="font-size:.8rem;font-weight:600;">Energielabel (alle woningen)</label>
       <select id="a_label" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;">
-        <option value="">Onbekend / per woning</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option selected>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></div>
+        <option value="">Onbekend / per woning</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option selected>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option value="EPV">EPV (energieprestatievergoeding)</option></select></div>
     <div><label style="font-size:.8rem;font-weight:600;">WOZ hele pand (€) <span style="font-weight:400;color:var(--grijs);">verdeling naar rato GO</span></label>
       <input type="number" id="a_pandwoz" placeholder="bijv. 2000000" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;"></div>
     <div style="display:flex;align-items:flex-end;"><button class="sec" style="margin:0;width:100%;" onclick="verdeelWoz()">Verdeel WOZ over woningen</button></div>
   </div>
-  <label class="check" style="display:flex;gap:8px;font-size:.83rem;margin-bottom:8px;"><input type="checkbox" id="a_nieuwbouw"> Nieuwbouw/transformatie: eerste bewoning na 1-7-2024 én start bouw vóór 1-1-2028 (+10% opslag bij middenhuur, 20 jaar)</label>
+  <label class="check" style="display:flex;gap:8px;font-size:.83rem;margin-bottom:4px;"><input type="checkbox" id="a_nieuwbouw"> Nieuwbouw/transformatie: eerste bewoning na 1-7-2024 én start bouw vóór 1-1-2028 (+10% opslag bij middenhuur, 20 jaar)</label>
+  <label class="check" style="display:flex;gap:8px;font-size:.83rem;margin-bottom:4px;"><input type="checkbox" id="a_nb1519"> Nieuwbouw of hoogniveau-renovatie opgeleverd 2015-2019 (minimaal 40 WOZ-punten bij ≥ 110 punten)</label>
+  <label class="check" style="display:flex;gap:8px;font-size:.83rem;margin-bottom:4px;"><input type="checkbox" id="a_kleinAU"> Kleine nieuwbouwwoning(en) < 40 m² in regio Amsterdam/Utrecht, opgeleverd 2018-2022 (afwijkend WOZ-kengetal)</label>
+  <label class="check" style="display:flex;gap:8px;font-size:.83rem;margin-bottom:8px;"><input type="checkbox" id="a_zorg"> Zorgwoning: drempelloos, persoonsalarmering én gemeenschappelijke maaltijd/recreatieruimte in het huurcontract (+35% punten)</label>
   <div style="overflow-x:auto;">
-  <table><thead><tr><th style="position:static;">Woning</th><th style="position:static;">WOZ (€)</th><th style="position:static;">Label</th><th style="position:static;">Aanrecht (cm)</th><th style="position:static;">Keukenapparatuur</th><th style="position:static;">Toilet</th><th style="position:static;">Toilet 2</th><th style="position:static;">Bad/douche</th><th style="position:static;">Wastafels</th><th style="position:static;">Verkoeling (vertrekken)</th><th style="position:static;">Badkamer-extra's</th></tr></thead>
+  <table><thead><tr><th style="position:static;">Woning</th><th style="position:static;">WOZ (€)</th><th style="position:static;">Label</th><th style="position:static;">Aanrecht (cm)</th><th style="position:static;">Keukenapparatuur</th><th style="position:static;">Toilet</th><th style="position:static;">Toilet 2</th><th style="position:static;">Bad/douche</th><th style="position:static;">Wastafels</th><th style="position:static;">Verkoeling (vertrekken)</th><th style="position:static;">Intercom met beeld</th><th style="position:static;">Badkamer-extra's</th></tr></thead>
   <tbody id="a_units"></tbody></table>
   </div>
   <button class="sec" style="padding:5px 12px;font-size:.8rem;" onclick="kopieerEerste()">Pas eerste regel toe op alle woningen</button>
@@ -169,6 +178,7 @@ function toonAanvulVragen(data){
     <td><select class="a_bd" ${A_SEL}><option value="shower" selected>Douche</option><option value="bath">Bad</option><option value="bath_and_shower">Bad + douche</option><option value="">Geen</option></select></td>
     <td><input type="number" class="a_wast" value="1" min="0" max="4" ${A_SEL}></td>
     <td><select class="a_koel" ${A_SEL}><option value="0" selected>Geen</option><option value="1">1 vertrek (+1)</option><option value="2">2 vertrekken (+2)</option></select></td>
+    <td style="text-align:center;"><input type="checkbox" class="a_intercom"></td>
     <td><select class="a_ex" ${A_SEL}><option value="geen">Geen</option><option value="standaard" selected>Standaard (afscheiding, radiator, meubel)</option><option value="luxe">Luxe (+ kast, thermostaat)</option></select></td>`;
     tb.appendChild(tr);
   });
@@ -217,6 +227,9 @@ function kopieerEerste(){
   const rijen=[...document.querySelectorAll('#a_units tr')]; if(rijen.length<2)return;
   const eerste=rijen[0];
   ['a_lbl','a_cm','a_app','a_wc','a_wc2','a_bd','a_wast','a_koel','a_ex'].forEach(c=>{
+  });
+  rijen.slice(1).forEach(r=>{r.querySelector('.a_intercom').checked=eerste.querySelector('.a_intercom').checked;});
+  [].forEach(c=>{
     const v=eerste.querySelector('.'+c).value;
     rijen.slice(1).forEach(r=>r.querySelector('.'+c).value=v);
   });
@@ -247,6 +260,7 @@ function verwerkAanvul(){
     u.basins_count=+g('a_wast')||0;
     u.bath_shower=g('a_bd')||null; u.bathroom_quality_ok=true;
     Object.assign(u,EX[g('a_ex')]);
+    u.intercom_video_audio=rijen[i].querySelector('.a_intercom').checked;
     // verkoeling: grootste verwarmde vertrekken van deze woning markeren
     const nKoel=+g('a_koel')||0;
     data.spaces.filter(s=>s.unit_id===u.unit_id).forEach(s=>{s.heated_and_cooled=false;});
@@ -256,6 +270,10 @@ function verwerkAanvul(){
         .forEach(s=>{s.heated_and_cooled=true;});
     }
   });
+  data.building.newbuild_2015_2019=document.getElementById('a_nb1519').checked;
+  data.building.small_newbuild_amsterdam_utrecht=document.getElementById('a_kleinAU').checked;
+  const zorgC=document.getElementById('a_zorg').checked;
+  data.building.care_step_free=zorgC; data.building.care_alarm_in_contract=zorgC; data.building.care_communal_rooms_in_contract=zorgC;
   if(document.getElementById('a_nieuwbouw').checked){
     data.building.new_build_first_occupancy="2024-07-01";
     data.building.construction_start_date="2027-12-31";
@@ -300,7 +318,26 @@ const I18N = {
 };
 const TT=k=>I18N[TAAL][k];
 /* ---- Volledige NL-EN vertaling: frasewoordenboek + leaf-vertaler ---- */
-const VERT=[["herkend maar geen m²-label gevonden binnen koppelafstand","recognised but no m² label found within linking distance"],
+const VERT=[["Rijksmonument, contract na 1-7-2024 (+35% huur)","National monument, contract after 1-7-2024 (+35% rent)"],
+["Rijksmonument, contract vóór 1-7-2024 (+50 punten)","National monument, contract before 1-7-2024 (+50 points)"],
+["Rijksmonument, contract vóór 1-7-2024: +50 punten","National monument, contract before 1-7-2024: +50 points"],
+["Rijksmonument, contract vóór 1-7-2024: +10 punten","National monument, contract before 1-7-2024: +10 points"],
+["werkt op het puntenaantal (kan naar de vrije sector tillen)","applies to the point total (can lift into the deregulated sector)"],
+["EPV (energieprestatievergoeding)","EPV (energy performance allowance)"],
+["energieprestatievergoeding (EPV)","energy performance allowance (EPV)"],
+["Intercom met beeld en deuropener","Video intercom with door release"],
+["Intercom met beeld","Video intercom"],
+["Nieuwbouw of hoogniveau-renovatie opgeleverd 2015-2019 (minimaal 40 WOZ-punten bij ≥ 110 punten)","New-build or high-level renovation delivered 2015-2019 (minimum 40 WOZ points at ≥ 110 points)"],
+["Nieuwbouw/hoogniveau-renovatie 2015-2019 met ≥ 110 punten: minimaal 40 WOZ-punten","New-build/high-level renovation 2015-2019 with ≥ 110 points: minimum 40 WOZ points"],
+["nieuwbouw/hoogniveau-renovatie 2015-2019","new-build/high-level renovation 2015-2019"],
+["Kleine nieuwbouwwoning(en) < 40 m² in regio Amsterdam/Utrecht, opgeleverd 2018-2022 (afwijkend WOZ-kengetal)","Small new-build unit(s) < 40 m² in Amsterdam/Utrecht region, delivered 2018-2022 (different WOZ factor)"],
+["kleine nieuwbouwwoning < 40 m², COROP Amsterdam/Utrecht (2018-2022): afwijkend kengetal","small new-build < 40 m², COROP Amsterdam/Utrecht (2018-2022): different factor"],
+["kleine nieuwbouw < 40 m² Amsterdam/Utrecht 2018-2022","small new-build < 40 m² Amsterdam/Utrecht 2018-2022"],
+["Zorgwoning: drempelloos, persoonsalarmering én gemeenschappelijke maaltijd/recreatieruimte in het huurcontract (+35% punten)","Care housing: step-free, personal alarm and communal dining/recreation room in the tenancy agreement (+35% points)"],
+["zorgwoning (alle criteria; +35% punten)","care housing (all criteria; +35% points)"],
+["nieuwbouwopslag: eerste bewoning na 1-7-2024, start vóór 2028 (+10%)","new-build surcharge: first occupancy after 1-7-2024, start before 2028 (+10%)"],
+["wettelijk minimum","statutory minimum"],["Monument","Monument"],
+["herkend maar geen m²-label gevonden binnen koppelafstand","recognised but no m² label found within linking distance"],
 ["niet gekoppeld aan een ruimtenaam — controleren","not linked to a room name — please check"],
 ["kon niet aan een woning worden gekoppeld (geen woning-anker op deze pagina)","could not be linked to a unit (no unit anchor on this page)"],
 ["gemeenschappelijke ruimte","communal space"],
@@ -545,7 +582,7 @@ function nieuwProject(){
 /* ============ CONFIG (jaarlijks bijwerken) ============ */
 const CFG = {
   tijdvak: "2026",
-  woz: { I: 16954, II: 268, minWoz: 85806 },
+  woz: { I: 16954, II: 268, IIklein: 114, minWoz: 85806 },
   grens: { sociaal: 143, midden: 186 },
   label: { een: {"A++++":62,"A+++":57,"A++":52,"A+":47,"A":41,"B":34,"C":22,"D":14,"E":-4,"F":-9,"G":-15},
            meer:{"A++++":58,"A+++":53,"A++":48,"A+":43,"A":37,"B":30,"C":15,"D":11,"E":-4,"F":-9,"G":-15} },
@@ -646,7 +683,9 @@ function rekenUnit(u, spaces, b, warns){
   const vorm = b.building_type==="single_family"?"een":"meer";
   let lbl = u.energy_label, lblBron="energielabel "+(lbl||"—");
   if(!lbl && b.construction_year){ lbl=CFG.bouwjaarLabel(b.construction_year); lblBron="geen label → bouwjaar "+b.construction_year+" (≈ label "+lbl+")"; warns.push(`${u.unit_id}: geen energielabel — gerekend op bouwjaar (${b.construction_year})`); }
-  let r4 = CFG.label[vorm][lbl] ?? 0;
+  let r4;
+  if(lbl==="EPV"){ r4 = vorm==="een"?32:28; lblBron="energieprestatievergoeding (EPV)"; }
+  else r4 = CFG.label[vorm][lbl] ?? 0;
   const monument = (b.heritage_status||"none")!=="none";
   let monNote="";
   if(monument && r4<0){ monNote=" — monument: minpunten vervallen (0)"; r4=0; }
@@ -741,19 +780,28 @@ function rekenUnit(u, spaces, b, warns){
   let woz=u.woz_value_eur,minToegepast=false;
   if(!woz){ woz=CFG.woz.minWoz; minToegepast=true; warns.push(`${u.unit_id}: geen WOZ-waarde — minimum (€ ${CFG.woz.minWoz.toLocaleString('nl-NL')}) toegepast`); }
   const m2tot=m2v+m2o;
-  const deelI=woz/CFG.woz.I, deelII=(m2tot>0? woz/m2tot/CFG.woz.II : 0);
+  const klein = b.small_newbuild_amsterdam_utrecht && m2tot<40;
+  const kII = klein? CFG.woz.IIklein : CFG.woz.II;
+  const deelI=woz/CFG.woz.I, deelII=(m2tot>0? woz/m2tot/kII : 0);
   let rWoz=kw(deelI+deelII);
   A("11. WOZ","Onderdeel I: € "+woz.toLocaleString('nl-NL')+" ÷ "+CFG.woz.I.toLocaleString('nl-NL'),deelI,minToegepast?"minimum-WOZ toegepast":"");
-  A("11. WOZ","Onderdeel II: € "+woz.toLocaleString('nl-NL')+" ÷ "+m2tot+" m² ÷ "+CFG.woz.II,deelII,"");
+  A("11. WOZ","Onderdeel II: € "+woz.toLocaleString('nl-NL')+" ÷ "+m2tot+" m² ÷ "+kII,deelII,klein?"kleine nieuwbouwwoning < 40 m², COROP Amsterdam/Utrecht (2018-2022): afwijkend kengetal":"");
+  let min40=false;
+  const sub110 = r1+r2+r3+r4+r5+r6+r7+r8+r9+r10+(u.intercom_video_audio?0.25:0);
+  if(b.newbuild_2015_2019 && sub110>=110 && rWoz<40){ min40=true;
+    A("11. WOZ","Nieuwbouw/hoogniveau-renovatie 2015-2019 met ≥ 110 punten: minimaal 40 WOZ-punten",40-rWoz,"wettelijk minimum"); rWoz=40; }
 
+  // --- Rubriek 12: intercom met beeld ---
+  let r12i=0;
+  if(u.intercom_video_audio){ r12i=0.25; A("12. Bijzonder","Intercom met beeld en deuropener",0.25,""); }
   // --- Zorg + cap + eindtotaal ---
   const zorg = b.care_step_free && b.care_alarm_in_contract && b.care_communal_rooms_in_contract;
-  let basis = r1+r2+r3+r4+r5+r6+r7+r8+r9+r10;
+  let basis = r1+r2+r3+r4+r5+r6+r7+r8+r9+r10+r12i;
   let zorgPts=0;
   if(zorg) zorgPts=(basis+rWoz)*0.35;
   let totOngecapt=Math.round(basis+rWoz+zorgPts), capNote="";
   let tot;
-  if(!minToegepast && rWoz > 0.33*(basis+rWoz)){
+  if(!minToegepast && !min40 && !klein && rWoz > 0.33*(basis+rWoz)){
     const capped=Math.floor(basis*33/67);
     A("11. WOZ","33%-cap: WOZ-punten beperkt tot 33% van totaal ("+rWoz.toLocaleString('nl-NL')+" → "+capped+")",capped-rWoz,"naar beneden afgerond op hele punten");
     let totC=Math.round(basis+capped+(zorg?(basis+capped)*0.35:0));
@@ -764,9 +812,11 @@ function rekenUnit(u, spaces, b, warns){
   if(zorg){ zorgPts=Math.round((tot-Math.round(basis+rWoz))*100)/100; A("12. Zorgwoning","+35% over rubriek 1–11",zorgPts,""); }
   A("Totaal","Subtotaal "+(basis+rWoz+ (zorg?zorgPts:0)).toLocaleString('nl-NL')+" → eindafronding op hele punten",tot,"≥ 0,5 omhoog");
 
+  // --- Rijksmonument met contract vóór 1-7-2024: +50 punten op het puntenaantal ---
+  const hs=b.heritage_status||"none";
+  if(hs==="national_monument_pre2024"){ tot+=50; A("Monument","Rijksmonument, contract vóór 1-7-2024: +50 punten",50,"werkt op het puntenaantal (kan naar de vrije sector tillen)"); }
   // --- Prijs + opslagen ---
   let mh=prijs(tot),pct=0,opslagen=[];
-  const hs=b.heritage_status||"none";
   if(hs==="national_monument"){pct+=35;opslagen.push("rijksmonument +35%");}
   else if(["municipal_monument","provincial_monument"].includes(hs)){pct+=15;opslagen.push("monument +15%");}
   else if(hs==="protected_townscape"){pct+=5;opslagen.push("stadsgezicht +5%");}
@@ -921,14 +971,16 @@ function rekenKamer(u, spaces, b, warns){
   A("Totaal","Subtotaal → eindafronding",tot,"hele punten");
 
   // prijs + opslag
-  let mh=prijsK(tot),pct=0,opslagen=[];
   const hs=b.heritage_status||"none";
+  let totK=tot;
+  if(hs==="national_monument_pre2024"){ totK=tot+10; A("Monument","Rijksmonument, contract vóór 1-7-2024: +10 punten",10,""); }
+  let mh=prijsK(totK),pct=0,opslagen=[];
   if(hs==="national_monument"){pct+=35;opslagen.push("rijksmonument +35%");}
   else if(["municipal_monument","provincial_monument"].includes(hs)){pct+=15;opslagen.push("monument +15%");}
   else if(hs==="protected_townscape"){pct+=5;opslagen.push("stadsgezicht +5%");}
   const huur=mh*(1+pct/100);
   if(opslagen.length)A("Prijs","Opslag: "+opslagen.join(" + ")+" over € "+mh.toFixed(2),0,"");
-  return {unit:u.unit_id,r1,r2,r3,r4,r5,r6,r7,r8,r9:0,r10,rWoz,zorgPts,tot,capNote:"",sector:1,
+  return {unit:u.unit_id,r1,r2,r3,r4,r5,r6,r7,r8,r9:0,r10,rWoz,zorgPts,tot:totK,capNote:"",sector:1,
           huur,basisHuur:mh,opslagen,m2v:Math.round(m2vP),m2o:Math.round(m2oP),vrij:false,aud,kamer:true};
 }
 
@@ -953,7 +1005,7 @@ function voegUnitToe(){
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;font-size:.8rem;">
     <div><label style="font-weight:600;font-size:.78rem;">WOZ-waarde (€)</label><input type="number" class="u_woz" ${SEL}></div>
-    <div><label style="font-weight:600;font-size:.78rem;">Energielabel</label><select class="u_label" ${SEL}><option value="">Geen (bouwjaar)</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option selected>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></div>
+    <div><label style="font-weight:600;font-size:.78rem;">Energielabel</label><select class="u_label" ${SEL}><option value="">Geen (bouwjaar)</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option selected>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option value="EPV">EPV (energieprestatievergoeding)</option></select></div>
     <div><label style="font-weight:600;font-size:.78rem;">Aanrechtlengte (cm)</label><input type="number" class="u_aanrecht" value="180" ${SEL}></div>
     <div><label style="font-weight:600;font-size:.78rem;">Kookplaat</label><select class="u_hob" ${SEL}><option value="induction">Inductie</option><option value="ceramic">Keramisch</option><option value="gas">Gas</option><option value="">Geen</option></select></div>
     <div><label style="font-weight:600;font-size:.78rem;">Toilet 1</label><select class="u_wc1" ${SEL}><option value="wall_hung_toilet_room">Hangend, toiletruimte</option><option value="wall_hung_bathroom">Hangend, badkamer</option><option value="standing_toilet_room">Staand, toiletruimte</option><option value="standing_bathroom">Staand, badkamer</option><option value="">Geen</option></select></div>
@@ -1029,6 +1081,11 @@ function verzamelHand(){
     heritage_status:document.getElementById('h_mon').value,construction_year:+document.getElementById('h_bj').value||null,
     total_addresses:+document.getElementById('h_adr').value||1,
     care_step_free:false,care_alarm_in_contract:false,care_communal_rooms_in_contract:false},units:[],spaces:[]};
+  const hz=document.getElementById('h_zorg').checked;
+  data.building.care_step_free=hz; data.building.care_alarm_in_contract=hz; data.building.care_communal_rooms_in_contract=hz;
+  data.building.newbuild_2015_2019=document.getElementById('h_nb1519').checked;
+  data.building.small_newbuild_amsterdam_utrecht=document.getElementById('h_kleinAU').checked;
+  if(document.getElementById('h_nieuwbouw').checked){data.building.new_build_first_occupancy="2024-07-01";data.building.construction_start_date="2027-12-31";}
   const rooms=document.getElementById('h_verhuur').value==="rooms";
   if(rooms) data.building.letting_type="rooms";
   let sid=0;
