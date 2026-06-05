@@ -112,7 +112,7 @@ input[type=file]{margin-top:6px;}
         <option value="none">Geen</option><option value="national_monument">Rijksmonument, contract na 1-7-2024 (+35% huur)</option><option value="national_monument_pre2024">Rijksmonument, contract vóór 1-7-2024 (+50 punten)</option>
         <option value="municipal_monument">Gemeentelijk/prov. (+15%)</option><option value="protected_townscape">Stadsgezicht (+5%)</option></select></div>
     <div><label style="font-size:.8rem;font-weight:600;">Energielabel (alle woningen)</label>
-      <select id="a_label" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;">
+      <select id="a_label" onchange="zetLabelAlle(this.value)" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;">
         <option value="">Onbekend / per woning</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option selected>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option value="EPV">EPV (energieprestatievergoeding)</option><optgroup label="Energie-index (2015-2021)"><option value="A++">EI ≤ 0,6</option><option value="A+">0,6 &lt; EI ≤ 0,8</option><option value="A">0,8 &lt; EI ≤ 1,2</option><option value="B">1,2 &lt; EI ≤ 1,4</option><option value="C">1,4 &lt; EI ≤ 1,8</option><option value="D">1,8 &lt; EI ≤ 2,1</option><option value="E">2,1 &lt; EI ≤ 2,4</option><option value="F">2,4 &lt; EI ≤ 2,7</option><option value="G">EI &gt; 2,7</option></optgroup></select></div>
     <div><label style="font-size:.8rem;font-weight:600;">WOZ hele pand (€) <span style="font-weight:400;color:var(--grijs);">verdeling naar rato GO</span></label>
       <input type="number" id="a_pandwoz" placeholder="bijv. 2000000" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;"></div>
@@ -174,7 +174,7 @@ function toonAanvulVragen(data){
     const tr=document.createElement('tr');
     tr.innerHTML=`<td><b>${u.unit_id}</b><br><span style="font-size:.72rem;color:var(--grijs);">${u.gross_floor_area_m2?u.gross_floor_area_m2+' m² GO':''}</span></td>
     <td><input type="number" class="a_woz" value="${u.woz_value_eur||''}" ${A_SEL}></td>
-    <td><select class="a_lbl" ${A_SEL}><option value="">Gebouw</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></td>
+    <td style="min-width:130px;"><select class="a_lbl" ${A_SEL}><option value="">Gebouw</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option value="EPV">EPV</option><optgroup label="Energie-index"><option value="A++">EI ≤ 0,6</option><option value="A+">0,6-0,8</option><option value="A">0,8-1,2</option><option value="B">1,2-1,4</option><option value="C">1,4-1,8</option><option value="D">1,8-2,1</option><option value="E">2,1-2,4</option><option value="F">2,4-2,7</option><option value="G">EI &gt; 2,7</option></optgroup></select></td>
     <td><input type="number" class="a_cm" value="${u.counter_length_cm||180}" ${A_SEL}></td>
     <td><select class="a_app" ${A_SEL}><option value="geen">Geen/minimaal</option><option value="standaard" selected>Standaard (inductie, koelkast, oven, vaatwasser, afzuiging)</option><option value="compleet">Compleet (+ vriezer, magnetron, quooker)</option></select></td>
     <td><select class="a_wc" ${A_SEL}><option value="wall_hung_toilet_room" selected>Hangend, toiletruimte</option><option value="wall_hung_bathroom">Hangend, badkamer</option><option value="standing_toilet_room">Staand, toiletruimte</option><option value="standing_bathroom">Staand, badkamer</option><option value="">Geen</option></select></td>
@@ -216,6 +216,10 @@ async function heranalyse(){
     document.getElementById('meldingen').innerHTML='<div class="warn"><b>Heranalyse afgebroken:</b> '+(e.name==='AbortError'?'duurde langer dan 95 seconden — probeer het nog eens (na de slaapstand van de gratis hosting is de eerste keer traag).':e.message)+'</div>';
   }
   finally{clearInterval(tik);clearTimeout(stop);document.getElementById('btnReview').disabled=false;}
+}
+function zetLabelAlle(v){
+  if(!v) return;
+  document.querySelectorAll('#a_units .a_lbl').forEach(s=>{ s.value=v; if(s.value!==v) s.value=''; });
 }
 function verdeelWoz(){
   const pand=+document.getElementById('a_pandwoz').value; if(!pand||!extractData)return;
