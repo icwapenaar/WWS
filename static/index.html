@@ -56,7 +56,7 @@ input[type=file]{margin-top:6px;}
   </div>
 
   <div id="paneelJson">
-    <div class="foot" style="margin-bottom:8px;">Tekening (PDF) laten uitlezen? Dat is een AI-stap die niet in dit losse bestand draait: stuur de plattegrond naar Claude en je krijgt het JSON-bestand terug dat je hier inleest. In de productie-app wordt dit een geïntegreerde uploadfunctie.</div>
+    <div class="foot" style="margin-bottom:8px;">Upload een plattegrond (PDF, vectortekening met "woning X"-labels en m²-aanduidingen) of een JSON-bestand. De extractie draait op de server; controleer daarna de open vragen en vul de ontbrekende velden (WOZ, label, keuken/sanitair) aan via de JSON of handmatige invoer.</div>
     <input type="file" id="bestand" accept=".json,.pdf">
     <button onclick="bereken()" data-i18n="btnCalc">Bereken puntentelling</button>
     <details style="margin-top:12px;">
@@ -144,6 +144,15 @@ input[type=file]{margin-top:6px;}
 <script>
 /* ============ AANVULSCHERM NA EXTRACTIE ============ */
 let extractData=null;
+let laatsteExtractMelding=null;
+function renderExtractMelding(){
+  if(!laatsteExtractMelding) return;
+  const m=laatsteExtractMelding;
+  let h='<div class="warn"><b>'+TT('extractOk')+'</b> '+m.u+' '+TT('woningen')+' '+m.s+' '+TT('ruimtes');
+  if(m.v.length) h+='<br><b>'+TT('openVragen')+' ('+m.v.length+') '+TT('controleer')+'</b><br>'+m.v.slice(0,15).map(w=>fEN(w)).join('<br>')+(m.v.length>15?'<br>…':'');
+  h+='</div>';
+  document.getElementById('meldingen').innerHTML=h;
+}
 const A_SEL='style="width:100%;padding:6px;border:1px solid #c4ccd6;border-radius:6px;font-size:.82rem;"';
 function toonAanvulVragen(data){
   extractData=data;
@@ -291,7 +300,15 @@ const I18N = {
 };
 const TT=k=>I18N[TAAL][k];
 /* ---- Volledige NL-EN vertaling: frasewoordenboek + leaf-vertaler ---- */
-const VERT=[["1. Vertrekken","1. Rooms"],["2. Overige ruimten","2. Other spaces"],["3. Verwarming","3. Heating"],["4. Energieprestatie","4. Energy performance"],["5. Keuken","5. Kitchen"],["6. Sanitair","6. Sanitary"],["7. Handicap","7. Disability"],["8. Buitenruimte","8. Outdoor space"],["9. Gemeensch. ruimten","9. Communal spaces"],["12. Zorgwoning","12. Care housing"],["12. Bijzonder","12. Special"],["13. Aftrek","13. Deductions"],["10. Parkeren","10. Parking"],["Totaal","Total"],["Prijs","Price"],
+const VERT=[["herkend maar geen m²-label gevonden binnen koppelafstand","recognised but no m² label found within linking distance"],
+["niet gekoppeld aan een ruimtenaam — controleren","not linked to a room name — please check"],
+["kon niet aan een woning worden gekoppeld (geen woning-anker op deze pagina)","could not be linked to a unit (no unit anchor on this page)"],
+["gemeenschappelijke ruimte","communal space"],
+["aantal adressen met toegang invullen","enter the number of addresses with access"],
+["m²-label","m² label"],["plattegrond","floor plan"],
+["heated=true aangenomen voor alle vertrekken — bevestigen","heated=true assumed for all habitable rooms — please confirm"],
+["fietsenberging","bicycle storage"],["collectieve","collective"],
+["1. Vertrekken","1. Rooms"],["2. Overige ruimten","2. Other spaces"],["3. Verwarming","3. Heating"],["4. Energieprestatie","4. Energy performance"],["5. Keuken","5. Kitchen"],["6. Sanitair","6. Sanitary"],["7. Handicap","7. Disability"],["8. Buitenruimte","8. Outdoor space"],["9. Gemeensch. ruimten","9. Communal spaces"],["12. Zorgwoning","12. Care housing"],["12. Bijzonder","12. Special"],["13. Aftrek","13. Deductions"],["10. Parkeren","10. Parking"],["Totaal","Total"],["Prijs","Price"],
 
 ["Beschrijf wat er mist of fout is — de AI analyseert de tekening opnieuw met jouw opmerking:","Describe what is missing or wrong — the AI re-analyses the drawing with your remark:"],
 ["Klopt er iets niet aan de uitgelezen tekening?","Something wrong in the extracted drawing?"],
@@ -462,16 +479,24 @@ const VERT=[["1. Vertrekken","1. Rooms"],["2. Overige ruimten","2. Other spaces"
 VERT.sort((a,b)=>b[0].length-a[0].length);
 function fEN(s){ if(TAAL!=='en'||!s) return s; let r=s; for(const [nl,en] of VERT){ if(r.includes(nl)) r=r.split(nl).join(en); } return r; }
 function tagLeaves(root){
-  (root||document).querySelectorAll('label,h2,th,td,button,option,summary,b,span,small,legend,div.foot,div.sub').forEach(el=>{
-    if(el.id==='taalKnop'||el.closest('textarea')) return;
-    if(el.hasAttribute('data-i18n')) return;
-    if(el.children.length===0){ const t=el.textContent; if(t && t.trim().length>1 && !el.dataset.nl) el.dataset.nl=t; }
-  });
-  (root||document).querySelectorAll('textarea[placeholder],input[placeholder]').forEach(el=>{ if(!el.dataset.nlph) el.dataset.nlph=el.placeholder; });
+  const wortel = (root&&root.nodeType===1)? root : document.body;
+  const walker = document.createTreeWalker(wortel, NodeFilter.SHOW_TEXT, null);
+  let n;
+  while((n=walker.nextNode())){
+    const pa=n.parentElement; if(!pa) continue;
+    if(["SCRIPT","STYLE","TEXTAREA"].includes(pa.tagName)) continue;
+    if(pa.id==='taalKnop') continue;
+    if(pa.closest('[data-i18n]')) continue;
+    const t=n.textContent;
+    if(t && t.trim().length>1 && !VERT_GEZIEN.has(n)){ VERT_GEZIEN.add(n); VERT_NODES.push({node:n, nl:t}); }
+  }
+  wortel.querySelectorAll('textarea[placeholder],input[placeholder]').forEach(el=>{ if(!el.dataset.nlph) el.dataset.nlph=el.placeholder; });
+  if(wortel.matches && wortel.matches('textarea[placeholder],input[placeholder]') && !wortel.dataset.nlph) wortel.dataset.nlph=wortel.placeholder;
 }
+const VERT_NODES=[]; const VERT_GEZIEN=new WeakSet();
 function applyVert(root){
-  (root||document).querySelectorAll('[data-nl]').forEach(el=>{ el.textContent = TAAL==='en'? fEN(el.dataset.nl) : el.dataset.nl; });
-  (root||document).querySelectorAll('[data-nlph]').forEach(el=>{ el.placeholder = TAAL==='en'? fEN(el.dataset.nlph) : el.dataset.nlph; });
+  VERT_NODES.forEach(e=>{ if(!e.node.isConnected) return; e.node.textContent = TAAL==='en' ? fEN(e.nl) : e.nl; });
+  document.querySelectorAll('[data-nlph]').forEach(el=>{ el.placeholder = TAAL==='en' ? fEN(el.dataset.nlph) : el.dataset.nlph; });
 }
 function vertaalNieuw(el){ tagLeaves(el); if(TAAL==='en') applyVert(el); }
 
@@ -483,7 +508,7 @@ function pasTaalToe(){
   if(ths.length===15) TT('kop').forEach((t,i)=>{ths[i].innerHTML = i===12?'<b>'+t+'</b>':t;});
   document.querySelector('#projectLijst option[value=""]').textContent=TT('projLeeg');
 }
-function wisselTaal(){TAAL=TAAL==='nl'?'en':'nl';localStorage.setItem('wws_taal',TAAL);pasTaalToe();if(resultaten.length)bereken();}
+function wisselTaal(){TAAL=TAAL==='nl'?'en':'nl';localStorage.setItem('wws_taal',TAAL);pasTaalToe();renderExtractMelding();if(resultaten.length)bereken();}
 
 /* ============ PROJECTBEHEER (browseropslag) ============ */
 function projecten(){try{return JSON.parse(localStorage.getItem('wws_projecten')||'{}');}catch(e){return {};}}
@@ -512,7 +537,7 @@ function nieuwProject(){
   document.getElementById('advies').style.display='none';
   document.getElementById('projectLijst').value='';
   const b=document.getElementById('bestand'); if(b) b.value='';
-  document.getElementById('aanvulKaart').style.display='none'; extractData=null;
+  document.getElementById('aanvulKaart').style.display='none'; extractData=null; laatsteExtractMelding=null;
   document.getElementById('btnWijzig').style.display='none';
   resultaten=[];laatsteData=null;
   invoerTab('json');
@@ -1192,11 +1217,8 @@ document.getElementById('bestand').addEventListener('change',async e=>{
       const data=await resp.json();
       if(!resp.ok){meld.innerHTML='<div class="warn"><b>'+TT('mislukt')+'</b> '+(data.error||resp.status)+'</div>';return;}
       document.getElementById('invoer').value=JSON.stringify(data,null,1);
-      let html='<div class="warn"><b>'+TT('extractOk')+'</b> '+data.units.length+' '+TT('woningen')+' '+data.spaces.length+' '+TT('ruimtes');
-      const v=(data._meta&&data._meta.open_vragen)||[];
-      if(v.length) html+='<br><b>'+TT('openVragen')+' ('+v.length+') '+TT('controleer')+'</b><br>'+v.slice(0,15).join('<br>')+(v.length>15?'<br>…':'');
-      html+='</div>';
-      meld.innerHTML=html;
+      laatsteExtractMelding={u:data.units.length,s:data.spaces.length,v:(data._meta&&data._meta.open_vragen)||[]};
+      renderExtractMelding();
       toonAanvulVragen(data);
     }catch(err){meld.innerHTML='<div class="warn"><b>Serverfout:</b> '+err.message+' — draait de backend? (uvicorn main:app)</div>';}
     e.target.value=''; return;
