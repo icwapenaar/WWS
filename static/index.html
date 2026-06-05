@@ -115,7 +115,7 @@ input[type=file]{margin-top:6px;}
       <select id="a_label" onchange="zetLabelAlle(this.value)" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;">
         <option value="">Onbekend / per woning</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option selected>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option value="EPV">EPV (energieprestatievergoeding)</option><optgroup label="Energie-index (2015-2021)"><option value="A++">EI ≤ 0,6</option><option value="A+">0,6 &lt; EI ≤ 0,8</option><option value="A">0,8 &lt; EI ≤ 1,2</option><option value="B">1,2 &lt; EI ≤ 1,4</option><option value="C">1,4 &lt; EI ≤ 1,8</option><option value="D">1,8 &lt; EI ≤ 2,1</option><option value="E">2,1 &lt; EI ≤ 2,4</option><option value="F">2,4 &lt; EI ≤ 2,7</option><option value="G">EI &gt; 2,7</option></optgroup></select></div>
     <div><label style="font-size:.8rem;font-weight:600;">WOZ hele pand (€) <span style="font-weight:400;color:var(--grijs);">verdeling naar rato GO</span></label>
-      <input type="number" id="a_pandwoz" placeholder="bijv. 2000000" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;"></div>
+      <input type="text" inputmode="numeric" class="duizend" id="a_pandwoz" placeholder="bijv. 2.000.000" style="width:100%;padding:7px;border:1px solid #c4ccd6;border-radius:8px;"></div>
     <div style="display:flex;align-items:flex-end;"><button class="sec" style="margin:0;width:100%;" onclick="verdeelWoz()">Verdeel WOZ over woningen</button></div>
   </div>
   <label class="check" style="display:flex;gap:8px;font-size:.83rem;margin-bottom:4px;"><input type="checkbox" id="a_nieuwbouw"> Nieuwbouw/transformatie: eerste bewoning na 1-7-2024 én start bouw vóór 1-1-2028 (+10% opslag bij middenhuur, 20 jaar)</label>
@@ -157,6 +157,12 @@ input[type=file]{margin-top:6px;}
 <script>
 /* ============ AANVULSCHERM NA EXTRACTIE ============ */
 let extractData=null;
+const parseG=v=>{const d=String(v||'').replace(/\D/g,'');return d?+d:null;};
+document.addEventListener('input',e=>{
+  if(!e.target.classList||!e.target.classList.contains('duizend'))return;
+  const d=e.target.value.replace(/\D/g,'');
+  e.target.value=d?Number(d).toLocaleString('nl-NL'):'';
+});
 let laatsteExtractMelding=null;
 function renderExtractMelding(){
   if(!laatsteExtractMelding) return;
@@ -173,7 +179,7 @@ function toonAanvulVragen(data){
   data.units.forEach((u,i)=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="min-width:110px;white-space:nowrap;"><b>${u.unit_id}</b><br><span style="font-size:.72rem;color:var(--grijs);">${u.gross_floor_area_m2?u.gross_floor_area_m2+' m² GO':''}</span></td>
-    <td><input type="number" class="a_woz" value="${u.woz_value_eur||''}" ${A_SEL}></td>
+    <td><input type="text" inputmode="numeric" class="a_woz duizend" value="${u.woz_value_eur?u.woz_value_eur.toLocaleString('nl-NL'):''}" ${A_SEL}></td>
     <td style="width:100px;min-width:100px;"><select class="a_lbl" ${A_SEL}><option value="">Gebouw</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option value="EPV">EPV</option><optgroup label="Energie-index"><option value="A++">EI ≤ 0,6</option><option value="A+">0,6-0,8</option><option value="A">0,8-1,2</option><option value="B">1,2-1,4</option><option value="C">1,4-1,8</option><option value="D">1,8-2,1</option><option value="E">2,1-2,4</option><option value="F">2,4-2,7</option><option value="G">EI &gt; 2,7</option></optgroup></select></td>
     <td style="width:70px;"><input type="number" class="a_cm" value="${u.counter_length_cm||180}" ${A_SEL}></td>
     <td><select class="a_app" ${A_SEL}><option value="geen">Geen/minimaal</option><option value="standaard" selected>Standaard (inductie, koelkast, oven, vaatwasser, afzuiging)</option><option value="compleet">Compleet (+ vriezer, magnetron, quooker)</option></select></td>
@@ -222,25 +228,23 @@ function zetLabelAlle(v){
   document.querySelectorAll('#a_units .a_lbl').forEach(s=>{ s.value=v; if(s.value!==v) s.value=''; });
 }
 function verdeelWoz(){
-  const pand=+document.getElementById('a_pandwoz').value; if(!pand||!extractData)return;
+  const pand=parseG(document.getElementById('a_pandwoz').value); if(!pand||!extractData)return;
   const us=extractData.units;
   const totGO=us.reduce((a,u)=>a+(u.gross_floor_area_m2||0),0);
   const rijen=document.querySelectorAll('#a_units tr');
   us.forEach((u,i)=>{
     const deel = totGO>0 ? pand*(u.gross_floor_area_m2||0)/totGO : pand/us.length;
-    rijen[i].querySelector('.a_woz').value=Math.round(deel);
+    rijen[i].querySelector('.a_woz').value=Math.round(deel).toLocaleString('nl-NL');
   });
 }
 function kopieerEerste(){
   const rijen=[...document.querySelectorAll('#a_units tr')]; if(rijen.length<2)return;
   const eerste=rijen[0];
   ['a_lbl','a_cm','a_app','a_wc','a_wc2','a_bd','a_wast','a_koel','a_ex'].forEach(c=>{
+    const v=eerste.querySelector('.'+c).value;
+    rijen.slice(1).forEach(r=>{const el=r.querySelector('.'+c); el.value=v;});
   });
   rijen.slice(1).forEach(r=>{r.querySelector('.a_intercom').checked=eerste.querySelector('.a_intercom').checked;});
-  [].forEach(c=>{
-    const v=eerste.querySelector('.'+c).value;
-    rijen.slice(1).forEach(r=>r.querySelector('.'+c).value=v);
-  });
 }
 function wijzigAntwoorden(){
   if(!extractData)return;
@@ -260,7 +264,7 @@ function verwerkAanvul(){
   const rijen=document.querySelectorAll('#a_units tr');
   data.units.forEach((u,i)=>{
     const g=c=>rijen[i].querySelector('.'+c).value;
-    u.woz_value_eur=+g('a_woz')||null;
+    u.woz_value_eur=parseG(g('a_woz'));
     u.energy_label=g('a_lbl')||gLbl||null;
     u.counter_length_cm=+g('a_cm')||0; u.kitchen_basic_ok=(+g('a_cm')||0)>=100;
     Object.assign(u,APP[g('a_app')]);
@@ -1024,7 +1028,7 @@ function voegUnitToe(){
     <button class="sec" style="padding:4px 10px;font-size:.78rem;" onclick="this.closest('.unitblok').remove()">verwijder</button>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;font-size:.8rem;">
-    <div><label style="font-weight:600;font-size:.78rem;">WOZ-waarde (€)</label><input type="number" class="u_woz" ${SEL}></div>
+    <div><label style="font-weight:600;font-size:.78rem;">WOZ-waarde (€)</label><input type="text" inputmode="numeric" class="u_woz duizend" ${SEL}></div>
     <div><label style="font-weight:600;font-size:.78rem;">Energielabel</label><select class="u_label" ${SEL}><option value="">Geen (bouwjaar)</option><option>A++++</option><option>A+++</option><option>A++</option><option>A+</option><option selected>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option value="EPV">EPV (energieprestatievergoeding)</option><optgroup label="Energie-index (2015-2021)"><option value="A++">EI ≤ 0,6</option><option value="A+">0,6 &lt; EI ≤ 0,8</option><option value="A">0,8 &lt; EI ≤ 1,2</option><option value="B">1,2 &lt; EI ≤ 1,4</option><option value="C">1,4 &lt; EI ≤ 1,8</option><option value="D">1,8 &lt; EI ≤ 2,1</option><option value="E">2,1 &lt; EI ≤ 2,4</option><option value="F">2,4 &lt; EI ≤ 2,7</option><option value="G">EI &gt; 2,7</option></optgroup></select></div>
     <div><label style="font-weight:600;font-size:.78rem;">Aanrechtlengte (cm)</label><input type="number" class="u_aanrecht" value="180" ${SEL}></div>
     <div><label style="font-weight:600;font-size:.78rem;">Kookplaat</label><select class="u_hob" ${SEL}><option value="induction">Inductie</option><option value="ceramic">Keramisch</option><option value="gas">Gas</option><option value="">Geen</option></select></div>
@@ -1123,7 +1127,7 @@ function verzamelHand(){
   document.querySelectorAll('.unitblok').forEach(blok=>{
     const g=c=>blok.querySelector(c);
     const uid="Woning "+g('.u_id').value;
-    data.units.push({unit_id:uid,woz_value_eur:+g('.u_woz').value||null,energy_label:g('.u_label').value||null,
+    data.units.push({unit_id:uid,woz_value_eur:parseG(g('.u_woz').value),energy_label:g('.u_label').value||null,
       counter_length_cm:+g('.u_aanrecht').value||0,kitchen_basic_ok:(+g('.u_aanrecht').value||0)>=100,
       hob:g('.u_hob').value||null,fridge_built_in:g('.u_koel').checked,oven:g('.u_oven').checked?"electric":null,
       dishwasher_built_in:g('.u_vaat').checked,extractor_hood:g('.u_afzuig').checked,
