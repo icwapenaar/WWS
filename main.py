@@ -46,53 +46,61 @@ ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
 @app.post("/api/review")
 async def api_review(payload: dict):
-    """Heranalyse met gebruikersopmerking via Claude API."""
+    """Heranalyse met gebruikersopmerking via Claude API — patch-gebaseerd (snel)."""
     if not ANTHROPIC_KEY:
-        return JSONResponse({"error": "Geen ANTHROPIC_API_KEY ingesteld. Maak een API-key aan op console.anthropic.com en zet deze als environment-variabele ANTHROPIC_API_KEY in Render (Settings > Environment). Daarna werkt de heranalyse."}, status_code=503)
+        return JSONResponse({"error": "Geen ANTHROPIC_API_KEY ingesteld. Zet deze als environment-variabele in Render (Settings > Environment)."}, status_code=503)
     opmerking = (payload.get("opmerking") or "").strip()
     data = payload.get("data")
     if not opmerking or not data:
         return JSONResponse({"error": "Opmerking en data zijn verplicht."}, status_code=400)
-    ruw = data.pop("_ruw", [])
-    prompt = f"""Je bent een expert in het Nederlandse woningwaarderingsstelsel (WWS) en het lezen van bouwtekeningen.
+    ruw = data.get("_ruw", [])
+    spaces_kort = [{k: v for k, v in sp.items() if k in ("space_id","unit_id","space_name","space_function","area_m2_wws","floor")} for sp in data.get("spaces", [])]
+    prompt = f"""Je bent expert in het Nederlandse woningwaarderingsstelsel (WWS) en het lezen van bouwtekeningen.
 
-Hieronder staat (1) de ruwe tekstlaag van een plattegrond-PDF (regels met paginanummer en x/y-coordinaten), (2) de huidige geextraheerde JSON (building/units/spaces) en (3) een opmerking van de gebruiker over wat er mis of vergeten is.
+Gegeven: (1) de ruwe tekstlaag van een plattegrond-PDF (regels met pagina en x/y-coordinaten; per pagina is "plattegrond"-vermelding de bouwlaag; "woning X"-labels zijn ankers), (2) de huidige lijst herkende ruimtes, (3) een opmerking van de gebruiker.
 
-Pas de JSON aan op basis van de opmerking en de ruwe tekst. Regels:
-- Behoud het schema exact (space_id, unit_id, space_name, space_function, area_m2_wws, heated, etc.).
-- space_function: living|bedroom|kitchen|bathroom|toilet_room|hall_circulation|internal_storage|attic|outdoor_private|outdoor_communal|communal_indoor|parking|technical.
-- Gebruik de coordinaten om ruimtes aan de juiste woning te koppelen (woning-labels zijn ankers; zelfde pagina = zelfde bouwlaag).
-- Verzin geen oppervlaktes: alleen m2 die in de ruwe tekst staan, of door de gebruiker worden genoemd. Als iets niet vindbaar is, meld dat in de uitleg.
-- Behoud bestaande velden van units (woz_value_eur, energy_label etc.) ongewijzigd.
+Bepaal welke WIJZIGINGEN nodig zijn. Antwoord UITSLUITEND met geldige JSON, zonder toelichting eromheen:
+{{"uitleg":"korte uitleg in het Nederlands",
+ "spaces_toevoegen":[{{"space_id":"nieuw-1","unit_id":"Woning X","space_name":"...","space_function":"living|bedroom|kitchen|bathroom|toilet_room|hall_circulation|internal_storage|attic|outdoor_private|outdoor_communal|communal_indoor|parking|technical","area_m2_wws":0.0,"heated":true}}],
+ "spaces_wijzigen":[{{"space_id":"bestaand-id","area_m2_wws":0.0}}],
+ "spaces_verwijderen":["space_id"]}}
 
-Antwoord UITSLUITEND met geldige JSON in dit formaat:
-{{"uitleg": "korte uitleg in het Nederlands van wat je hebt aangepast en waarom", "data": {{...volledige aangepaste JSON...}}}}
+Regels: verzin geen oppervlaktes — alleen m2 uit de ruwe tekst of expliciet door de gebruiker genoemd; lege lijsten zijn prima; als iets niet vindbaar is, leg dat uit in "uitleg" en wijzig niets.
 
 (1) RUWE TEKST:
 {chr(10).join(f"p{r['p']} ({r['x']},{r['y']}): {r['t']}" for r in ruw[:1200])}
 
-(2) HUIDIGE JSON:
-{json.dumps(data, ensure_ascii=False)}
+(2) HUIDIGE RUIMTES:
+{json.dumps(spaces_kort, ensure_ascii=False)}
 
-(3) OPMERKING GEBRUIKER:
+(3) OPMERKING:
 {opmerking}"""
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=85) as client:
             resp = await client.post("https://api.anthropic.com/v1/messages",
                 headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                json={"model": "claude-sonnet-4-6", "max_tokens": 16000,
+                json={"model": "claude-sonnet-4-6", "max_tokens": 3000,
                       "messages": [{"role": "user", "content": prompt}]})
         if resp.status_code != 200:
-            return JSONResponse({"error": f"Claude API-fout ({resp.status_code}): {resp.text[:300]}"}, status_code=502)
+            return JSONResponse({"error": f"Claude API-fout ({resp.status_code}): {resp.text[:200]}"}, status_code=502)
         tekst = resp.json()["content"][0]["text"]
-        # JSON uit het antwoord halen (evt. omringende tekst/codeblok strippen)
-        start = tekst.find("{"); eind = tekst.rfind("}") + 1
-        uit = json.loads(tekst[start:eind])
-        nieuwe = uit.get("data", {})
-        nieuwe["_ruw"] = ruw  # behouden voor volgende ronde
-        if not nieuwe.get("units") or not nieuwe.get("spaces"):
-            return JSONResponse({"error": "Heranalyse leverde geen geldige structuur op. Probeer de opmerking specifieker te maken."}, status_code=502)
-        return {"uitleg": uit.get("uitleg", ""), "data": nieuwe}
+        patch = json.loads(tekst[tekst.find("{"):tekst.rfind("}")+1])
+        # patch toepassen
+        spaces = data.get("spaces", [])
+        per_id = {sp["space_id"]: sp for sp in spaces}
+        for w in patch.get("spaces_wijzigen", []):
+            if w.get("space_id") in per_id:
+                per_id[w["space_id"]].update({k: v for k, v in w.items() if k != "space_id"})
+        weg = set(patch.get("spaces_verwijderen", []))
+        spaces = [sp for sp in spaces if sp["space_id"] not in weg]
+        for n in patch.get("spaces_toevoegen", []):
+            if n.get("area_m2_wws") and n.get("unit_id") is not None:
+                spaces.append(n)
+        data["spaces"] = spaces
+        aantal = len(patch.get("spaces_toevoegen", [])) + len(patch.get("spaces_wijzigen", [])) + len(weg)
+        return {"uitleg": patch.get("uitleg", ""), "aantal_wijzigingen": aantal, "data": data}
+    except httpx.TimeoutException:
+        return JSONResponse({"error": "De AI-analyse duurde te lang (timeout). Probeer het opnieuw of maak de opmerking specifieker."}, status_code=504)
     except Exception as e:
         return JSONResponse({"error": f"Heranalyse mislukt: {type(e).__name__}: {e}"}, status_code=502)
 
